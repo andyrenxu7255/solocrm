@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-solocrm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-solocrm}
+      POSTGRES_DB: ${POSTGRES_DB:-solocrm}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-solocrm} -d ${POSTGRES_DB:-solocrm}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-solocrm}:${POSTGRES_PASSWORD:-solocrm}@db:5432/${POSTGRES_DB:-solocrm}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_API_BASE: ${OPENAI_API_BASE:-https://api.openai.com/v1}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      SECRET_KEY: ${SECRET_KEY:-secret-change-me}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8000}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/audio:/app/data/audio
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:

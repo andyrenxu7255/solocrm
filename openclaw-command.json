@@ -1,0 +1,12 @@
+{
+  "name": "deploy-solocrm",
+  "description": "一键部署 SoloCRM - 超级个体销售极简 CRM",
+  "trigger": "/deploy solocrm",
+  "action": "exec",
+  "command": "bash $WORKSPACE/solocrm/deploy.sh",
+  "env": {
+    "WORKSPACE": "${OPENCLAW_WORKSPACE}"
+  },
+  "interactive": true,
+  "permissions": ["exec", "network"]
+}
