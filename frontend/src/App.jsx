@@ -6,6 +6,7 @@ import { CustomerDetail } from "./features/customer/CustomerDetail";
 import { SearchPage } from "./features/search/SearchPage";
 import { VisitsPage as VisitsPageContent } from "./features/visit/VisitsPage";
 import { TodoList } from "./features/todo/TodoList";
+import { BusinessPage } from "./features/business/BusinessPage";
 
 function HomePage() {
   return (
@@ -36,6 +37,7 @@ function CustomersPage() { return <CustomerList />; }
 function CustomerDetailPage() { return <CustomerDetail />; }
 function VisitsRoute() { return <VisitsPageContent />; }
 function TodosPage() { return <TodoList />; }
+function BusinessRoute() { return <BusinessPage />; }
 
 export default function App() {
   return (
@@ -48,6 +50,7 @@ export default function App() {
         <Route path="visits" element={<VisitsRoute />} />
         <Route path="todos" element={<TodosPage />} />
         <Route path="search" element={<SearchPage />} />
+        <Route path="business" element={<BusinessRoute />} />
       </Route>
     </Routes>
   );

@@ -8,6 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.database import init_pgvector
 from app.ai.router import router as ai_router
+from app.domains.agent.router import router as agent_router
+from app.domains.business.router import (
+    artifact_router,
+    business_router,
+    engagement_router,
+)
 from app.domains.case.router import router as case_router
 from app.domains.customer.router import router as customer_router
 from app.domains.product.router import router as product_router
@@ -41,6 +47,10 @@ app.add_middleware(
 )
 
 app.include_router(ai_router)
+app.include_router(agent_router)
+app.include_router(business_router)
+app.include_router(engagement_router)
+app.include_router(artifact_router)
 app.include_router(case_router)
 app.include_router(customer_router)
 app.include_router(plan_router)

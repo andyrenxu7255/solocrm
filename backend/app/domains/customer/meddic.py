@@ -7,10 +7,12 @@ from datetime import date, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.client import AIClient
+from app.ai.fallbacks import fallback_meddic_review, has_llm_access
 from app.ai.prompts import load_prompt
 from app.domains.customer.models import Customer
 from app.domains.todo.models import Todo
 from app.domains.visit.models import VisitRecord
+from app.shared.exceptions import ExternalServiceError
 from app.shared.exceptions import NotFoundError
 
 
@@ -42,13 +44,20 @@ class MeddicReviewService:
         context = _build_context(customer, recent_records)
         system_prompt = load_prompt("meddic_review")
 
-        client = AIClient()
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": context},
-        ]
-        response = await client.chat(messages, temperature=0.3)
-        result = _parse_json_response(response)
+        result = None
+        if has_llm_access():
+            client = AIClient()
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": context},
+            ]
+            try:
+                response = await client.chat(messages, temperature=0.3)
+                result = _parse_json_response(response)
+            except ExternalServiceError:
+                result = None
+        if not result:
+            result = fallback_meddic_review(customer, recent_records)
 
         if result:
             customer.meddic_json = {

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     llm_model: str = "gpt-4o-mini"
 
+    database_url: str = ""
     asr_api_key: str = ""
     asr_api_base: str = "https://api.siliconflow.cn/v1/audio/transcriptions"
     asr_model: str = "TeleAI/TeleSpeechASR"

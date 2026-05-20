@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 
 from app.ai.client import AIClient
+from app.ai.fallbacks import fallback_case_extraction, has_llm_access
 from app.ai.embedding import generate_embedding
 from app.ai.prompts import load_prompt
 from app.domains.case.models import SuccessCase
 from app.domains.case.schemas import CaseCreate, CaseUpdate
+from app.shared.exceptions import ExternalServiceError
 from app.shared.base_service import BaseService
 
 
@@ -16,7 +18,12 @@ class CaseService(BaseService[SuccessCase]):
 
         text = _case_to_text(data)
         if text:
-            instance.embedding = await generate_embedding(text)
+            try:
+                embedding = await generate_embedding(text)
+                if embedding:
+                    instance.embedding = embedding
+            except ExternalServiceError:
+                pass
 
         return await self.repository.create(instance)
 
@@ -28,38 +35,45 @@ class CaseService(BaseService[SuccessCase]):
 
         text = _case_instance_to_text(instance)
         if text:
-            instance.embedding = await generate_embedding(text)
+            try:
+                embedding = await generate_embedding(text)
+                if embedding:
+                    instance.embedding = embedding
+            except ExternalServiceError:
+                pass
 
         return await self.repository.update(instance)
 
     async def extract_from_conversation(self, user_input: str) -> SuccessCase:
-        client = AIClient()
-        system_prompt = load_prompt("case_extraction")
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input},
-        ]
-        response = await client.chat(messages, temperature=0.3)
-        extracted = _parse_json_response(response)
+        extracted = None
+        if has_llm_access():
+            client = AIClient()
+            system_prompt = load_prompt("case_extraction")
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_input},
+            ]
+            try:
+                response = await client.chat(messages, temperature=0.3)
+                extracted = _parse_json_response(response)
+            except ExternalServiceError:
+                extracted = None
 
         if not extracted:
-            create_data = CaseCreate(
-                title=user_input[:200],
-                company_name="",
-                industry="",
-                summary=user_input,
-            )
-        else:
-            create_data = CaseCreate(
-                title=extracted.get("title", user_input[:200]),
-                company_name=extracted.get("company_name", ""),
-                industry=extracted.get("industry", ""),
-                city=extracted.get("city", ""),
-                product=extracted.get("product", ""),
-                deal_size=extracted.get("deal_size"),
-                summary=extracted.get("summary", user_input),
-                key_points=extracted.get("key_points"),
-            )
+            extracted = fallback_case_extraction(user_input)
+        if not extracted.get("company_name"):
+            extracted["company_name"] = "待补充"
+
+        create_data = CaseCreate(
+            title=extracted.get("title", user_input[:200]),
+            company_name=extracted.get("company_name", "待补充"),
+            industry=extracted.get("industry", ""),
+            city=extracted.get("city", ""),
+            product=extracted.get("product", ""),
+            deal_size=extracted.get("deal_size"),
+            summary=extracted.get("summary", user_input),
+            key_points=extracted.get("key_points"),
+        )
 
         return await self.create_from_schema(create_data)
 

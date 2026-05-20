@@ -12,7 +12,9 @@ class CustomerService(BaseService[Customer]):
 
         text = _customer_to_text(data)
         if text:
-            instance.embedding = await generate_embedding(text)
+            embedding = await generate_embedding(text)
+            if embedding:
+                instance.embedding = embedding
 
         return await self.repository.create(instance)
 
@@ -24,7 +26,9 @@ class CustomerService(BaseService[Customer]):
 
         text = _customer_instance_to_text(instance)
         if text:
-            instance.embedding = await generate_embedding(text)
+            embedding = await generate_embedding(text)
+            if embedding:
+                instance.embedding = embedding
 
         return await self.repository.update(instance)
 

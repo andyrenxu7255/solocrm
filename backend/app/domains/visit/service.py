@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import UploadFile
 
 from app.ai.client import AIClient
+from app.ai.fallbacks import fallback_visit_summary, has_llm_access
 from app.ai.prompts import load_prompt
 from app.domains.visit.models import VisitPlan, VisitRecord
 from app.domains.visit.schemas import (
@@ -16,6 +17,7 @@ from app.domains.visit.schemas import (
     VisitRecordUpdate,
 )
 from app.shared.base_service import BaseService
+from app.shared.exceptions import ExternalServiceError
 from app.utils.speech import transcribe_audio
 
 UPLOAD_DIR = Path("data/audio")
@@ -73,14 +75,21 @@ class VisitRecordService(BaseService[VisitRecord]):
         if not record.transcript:
             return record
 
-        client = AIClient()
-        system_prompt = load_prompt("visit_summary")
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": record.transcript},
-        ]
-        response = await client.chat(messages, temperature=0.3)
-        parsed = _parse_json_response(response)
+        parsed = None
+        if has_llm_access():
+            client = AIClient()
+            system_prompt = load_prompt("visit_summary")
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": record.transcript},
+            ]
+            try:
+                response = await client.chat(messages, temperature=0.3)
+                parsed = _parse_json_response(response)
+            except ExternalServiceError:
+                parsed = None
+        if not parsed:
+            parsed = fallback_visit_summary(record.transcript)
 
         if parsed:
             record.summary = parsed.get("summary", "")

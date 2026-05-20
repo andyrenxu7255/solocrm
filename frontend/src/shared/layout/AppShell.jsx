@@ -7,6 +7,7 @@ const navItems = [
   { to: "/cases", label: "案例" },
   { to: "/visits", label: "拜访" },
   { to: "/search", label: "搜索" },
+  { to: "/business", label: "业务内核" },
 ];
 
 export function AppShell() {

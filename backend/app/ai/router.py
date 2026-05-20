@@ -7,7 +7,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.client import AIClient
+from app.ai.fallbacks import fallback_customer_intel, fallback_opening, has_llm_access
 from app.ai.prompts import load_prompt
+from app.shared.exceptions import ExternalServiceError
 from app.database import get_db
 from app.domains.case.models import SuccessCase
 from app.domains.customer.meddic import MeddicReviewService
@@ -74,13 +76,19 @@ async def generate_opening(
         if case.summary:
             context_parts.append(f"案例摘要: {case.summary}")
 
-    system_prompt = load_prompt("generate_opening")
-    client = AIClient()
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": "\n".join(context_parts)},
-    ]
-    response = await client.chat(messages, temperature=0.7, max_tokens=1024)
+    if has_llm_access():
+        system_prompt = load_prompt("generate_opening")
+        client = AIClient()
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": "\n".join(context_parts)},
+        ]
+        try:
+            response = await client.chat(messages, temperature=0.7, max_tokens=1024)
+        except ExternalServiceError:
+            response = fallback_opening(customer, case)
+    else:
+        response = fallback_opening(customer, case)
 
     return APIResponse.ok({"content": response, "customer_name": customer.name})
 
@@ -110,14 +118,20 @@ async def customer_intel(
     news = search_company_news(customer.company)
     context = format_news_for_prompt(customer.company, news)
 
-    client = AIClient()
-    messages = [
-        {
-            "role": "system",
-            "content": "你是一个销售情报分析助手。根据提供的公司公开信息，提炼出对销售有用的洞察：近期动态、潜在需求、决策窗口。用简洁中文回答。",
-        },
-        {"role": "user", "content": context},
-    ]
-    summary = await client.chat(messages, temperature=0.3, max_tokens=512)
+    if has_llm_access():
+        client = AIClient()
+        messages = [
+            {
+                "role": "system",
+                "content": "你是一个销售情报分析助手。根据提供的公司公开信息，提炼出对销售有用的洞察：近期动态、潜在需求、决策窗口。用简洁中文回答。",
+            },
+            {"role": "user", "content": context},
+        ]
+        try:
+            summary = await client.chat(messages, temperature=0.3, max_tokens=512)
+        except ExternalServiceError:
+            summary = fallback_customer_intel(customer.company, news)
+    else:
+        summary = fallback_customer_intel(customer.company, news)
 
     return APIResponse.ok({"results": news, "summary": summary})

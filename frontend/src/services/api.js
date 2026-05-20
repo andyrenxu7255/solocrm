@@ -74,6 +74,30 @@ export const productAPI = {
   remove: (id) => api.delete(`/products/${id}`),
 };
 
+export const businessAPI = {
+  summary: () => api.get("/business/summary"),
+  export: () => api.get("/business/export"),
+  engagements: {
+    list: (params) => api.get("/engagements", { params }),
+    get: (id) => api.get(`/engagements/${id}`),
+    create: (data) => api.post("/engagements", data),
+    update: (id, data) => api.put(`/engagements/${id}`, data),
+    remove: (id) => api.delete(`/engagements/${id}`),
+  },
+  artifacts: {
+    list: (params) => api.get("/artifacts", { params }),
+    get: (id) => api.get(`/artifacts/${id}`),
+    create: (data) => api.post("/artifacts", data),
+    update: (id, data) => api.put(`/artifacts/${id}`, data),
+    remove: (id) => api.delete(`/artifacts/${id}`),
+  },
+};
+
+export const agentAPI = {
+  capabilities: () => api.get("/agent/capabilities"),
+  runAction: (data) => api.post("/agent/actions", data),
+};
+
 export const aiAPI = {
   meddic: (data) => api.post("/ai/meddic", data),
   opening: (data) => api.post("/ai/opening", data),
