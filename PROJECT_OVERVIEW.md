@@ -11,6 +11,7 @@
 - 合同、知识、方案、交付材料都可迁移导出
 - 数据默认留在自己的 PostgreSQL
 - 支持 OpenClaw / Hermes 风格的对话入口
+- 提供 `solocrm` CLI 作为 agent 的稳定命令层
 
 ## 🎯 核心设计原则
 
@@ -69,6 +70,7 @@ API 网关 (FastAPI)
 | 部署 | Docker Compose | 一键启动，用户友好 |
 | AI | OpenAI 兼容 API | 用户自己控制 Key，不绑定厂商 |
 | Agent 接口 | REST command API | `/agent/actions` + `/business/export` |
+| Agent CLI | Python console script | `solocrm doctor` / `solocrm engagement` / `solocrm export` |
 
 ## 📂 目录结构
 
@@ -79,10 +81,16 @@ solocrm/
 ├── ROADMAP.md                   # 迭代路线
 ├── CONTRIBUTING.md              # 贡献指南
 ├── OPENCLAW_INSTALL.md          # OpenClaw 部署指南
+├── docs/agent-deployment-guide.md # agent 部署与 CLI 接入
+├── docs/agent-api-examples.md    # API 样例
+├── AGENTS.md                    # agent 入口规则
 ├── .env.example                 # 环境变量模板
 ├── docker-compose.yml           # Docker 编排
 ├── deploy.sh                    # 一键部署脚本
 ├── openclaw-command.json        # OpenClaw 命令配置
+├── pyproject.toml               # CLI 安装入口
+├── solocrm_cli/                 # agent CLI
+├── skills/solocrm/              # 供 agent 读取的技能
 │
 ├── backend/                     # 后端服务
 │   ├── Dockerfile
@@ -195,10 +203,19 @@ solocrm/
 5. 健康检查
 6. 返回访问地址
 
+### Agent CLI
+
+```bash
+python -m pip install -e .
+solocrm doctor --json
+solocrm capabilities
+solocrm export --out ./solocrm-export.json
+```
+
 ### 手动部署
 
 ```bash
-git clone https://github.com/renxu-solo/solocrm.git
+ git clone https://github.com/andyrenxu7255/solocrm.git
 cd solocrm
 cp .env.example .env
 # 编辑 .env 填写 API Key
@@ -224,6 +241,7 @@ docker-compose up -d
 - [ ] 无 AI Key 时 CRUD 仍可工作
 - [ ] Docker Compose 一键启动成功
 - [ ] OpenClaw / Hermes 风格 agent 可直接调用
+- [ ] `solocrm` CLI 可在安装后直接使用
 
 ## 🤝 贡献指南
 

@@ -1,0 +1,19 @@
+[project]
+name = "solocrm-agent-cli"
+version = "0.1.0"
+description = "Agent-facing CLI for SoloCRM"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+solocrm = "solocrm_cli.solocrm:main"
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["solocrm_cli"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

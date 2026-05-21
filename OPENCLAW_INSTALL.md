@@ -7,7 +7,7 @@ SoloCRM 原生支持 OpenClaw 部署，可以一键在你的服务器安装完�
 在你的 OpenClaw 对话中直接发送这条命令：
 
 ```
-/openclaw clone https://github.com/你的用户名/solocrm
+/deploy solocrm
 ```
 
 OpenClaw 会自动：
@@ -17,6 +17,14 @@ OpenClaw 会自动：
 3. 自动配置环境变量
 4. 启动 Docker Compose 服务
 5. 配置完成后直接可以在 IM 中使用
+
+如果你的 OpenClaw 节点能直接执行本地命令，建议再安装 SoloCRM CLI：
+
+```bash
+cd ${OPENCLAW_WORKSPACE}/solocrm
+python -m pip install -e .
+solocrm doctor --json
+```
 
 ## 💬 使用方式
 
@@ -30,6 +38,14 @@ SoloCRM：请问这个项目是在哪个行业？什么细分领域？
 ```
 
 全程对话交互，不用打开浏览器也能用。
+
+如果你想让 agent 更稳定地调用结构化能力，建议优先使用：
+
+- `solocrm doctor --json`
+- `solocrm capabilities`
+- `solocrm engagement create`
+- `solocrm artifact create`
+- `solocrm export --out ...`
 
 ## ⚙️ 配置说明
 
@@ -81,3 +97,4 @@ docker-compose logs
 - ✅ 直接在 IM 聊天里用，随时随地打开手机就能用
 - ✅ 数据还在你自己服务器，安全可控
 - ✅ 和你日常工作流无缝整合
+- ✅ 还能通过 `solocrm` CLI 做审计友好的结构化调用

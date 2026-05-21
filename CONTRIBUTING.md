@@ -36,7 +36,7 @@ Be respectful, constructive, and kind. Let's build something great together.
 
 ```bash
 # 1. Fork and clone
-git clone https://github.com/your-username/solocrm.git
+git clone https://github.com/andyrenxu7255/solocrm.git
 cd solocrm
 
 # 2. Copy env

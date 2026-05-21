@@ -1,0 +1,4 @@
+interface:
+  display_name: "SoloCRM"
+  short_description: "Operate SoloCRM safely through its agent CLI and API, including capabilities, engagements, artifacts, and exports."
+  default_prompt: "Use the SoloCRM skill to verify the backend, inspect capabilities, create or update engagements, store business artifacts, and export local CRM context."

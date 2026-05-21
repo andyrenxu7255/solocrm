@@ -25,6 +25,7 @@ echo ""
 # 获取项目路径
 WORKSPACE="${OPENCLAW_WORKSPACE:-$HOME/agents-workspaces}"
 PROJECT_DIR="$WORKSPACE/solocrm"
+REPO_URL="${REPO_URL:-https://github.com/andyrenxu7255/solocrm.git}"
 
 echo "📂 工作区：$WORKSPACE"
 echo "📂 项目目录：$PROJECT_DIR"
@@ -33,13 +34,22 @@ echo ""
 # 克隆代码（如果不存在）
 if [ ! -d "$PROJECT_DIR" ]; then
     echo "📥 克隆代码..."
-    git clone https://github.com/renxu-solo/solocrm.git "$PROJECT_DIR"
+    git clone "$REPO_URL" "$PROJECT_DIR"
     echo "✅ 代码克隆完成"
 else
     echo "✅ 代码已存在"
 fi
 
 cd "$PROJECT_DIR"
+
+# 安装 CLI（如果系统有 Python）
+if command -v python &> /dev/null; then
+    echo "🔧 安装 SoloCRM CLI..."
+    python -m pip install -e .
+    echo "✅ CLI 安装完成"
+else
+    echo "⚠️  未找到 Python，跳过 CLI 安装"
+fi
 
 # 配置环境变量
 if [ ! -f ".env" ]; then
@@ -120,6 +130,8 @@ echo "💡 常用命令："
 echo "   查看日志：docker-compose logs -f"
 echo "   停止服务：docker-compose down"
 echo "   重启服务：docker-compose restart"
+echo "   安装 CLI：python -m pip install -e ."
+echo "   健康检查：solocrm doctor --json"
 echo ""
-echo "📖 文档：https://github.com/renxu-solo/solocrm"
+echo "📖 文档：https://github.com/andyrenxu7255/solocrm"
 echo ""

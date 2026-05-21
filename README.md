@@ -27,7 +27,7 @@
 如果你已经安装了 OpenClaw，直接在对话中执行：
 
 ```
-/openclaw deploy https://github.com/你的用户名/solocrm
+/deploy solocrm
 ```
 
 按照提示填写你的 AI API Key，完成后一键启动，直接通过 IM 使用。
@@ -38,7 +38,7 @@
 
 1. 克隆代码：
 ```bash
-git clone https://github.com/你的用户名/solocrm.git
+git clone https://github.com/andyrenxu7255/solocrm.git
 cd solocrm
 ```
 
@@ -67,6 +67,24 @@ docker-compose up -d
 
 5. 打开浏览器访问 `http://localhost:3000` 即可使用。
 
+### 方式三：安装 agent CLI
+
+如果你要让 OpenClaw、Hermes 或其他本地 agent 直接调用 SoloCRM，先安装 CLI：
+
+```bash
+python -m pip install -e .
+solocrm doctor --json
+```
+
+常用命令：
+
+```bash
+solocrm capabilities
+solocrm engagement list
+solocrm db info
+solocrm export --out ./solocrm-export.json
+```
+
 ## 📖 使用指南
 
 ### 核心流程
@@ -83,6 +101,7 @@ docker-compose up -d
 - **数据库**: PostgreSQL + pgvector
 - **AI**: OpenAI 兼容 API
 - **Agent 协议**: `/agent/capabilities` 和 `/agent/actions`
+- **Agent CLI**: `solocrm doctor` / `solocrm engagement` / `solocrm export`
 - **部署**: Docker Compose
 
 ## 🗺️ 路线图
