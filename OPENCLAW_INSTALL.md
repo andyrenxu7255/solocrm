@@ -24,6 +24,7 @@ OpenClaw 会自动：
 cd ${OPENCLAW_WORKSPACE}/solocrm
 python -m pip install -e .
 solocrm doctor --json
+solocrm audit summary --json
 ```
 
 ## 💬 使用方式
@@ -45,7 +46,10 @@ SoloCRM：请问这个项目是在哪个行业？什么细分领域？
 - `solocrm capabilities`
 - `solocrm engagement create`
 - `solocrm artifact create`
+- `solocrm audit errors --json`
 - `solocrm export --out ...`
+
+建议把 `skills/solocrm/SKILL.md` 加入 OpenClaw 的技能目录，并把 `AGENTS.md` 中的关键规则加入工作区 instructions。这样 agent 会优先走 CLI/API，不会直接改数据库，也会在失败时先查审计。
 
 ## ⚙️ 配置说明
 
@@ -88,6 +92,14 @@ docker-compose logs
 ### AI API 调用失败？
 
 检查 `OPENAI_API_KEY` 和 `OPENAI_API_BASE` 是否正确配置。
+
+### agent 写入失败？
+
+```bash
+solocrm audit errors --json
+```
+
+先查看最新失败动作的 `message` 和审计记录，再修正 payload 重试。
 
 ## 🎯 优势
 

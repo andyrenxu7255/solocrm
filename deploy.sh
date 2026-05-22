@@ -14,7 +14,11 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
+if docker compose version &> /dev/null; then
+    COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    COMPOSE_CMD="docker-compose"
+else
     echo "❌ Docker Compose 未安装，请先安装"
     exit 1
 fi
@@ -66,8 +70,13 @@ if [ ! -f ".env" ]; then
     OPENAI_API_BASE=${OPENAI_API_BASE:-https://api.openai.com/v1}
     
     # 生成随机密码
-    POSTGRES_PASSWORD=$(openssl rand -hex 16)
-    SECRET_KEY=$(openssl rand -hex 32)
+    if command -v openssl &> /dev/null; then
+        POSTGRES_PASSWORD=$(openssl rand -hex 16)
+        SECRET_KEY=$(openssl rand -hex 32)
+    else
+        POSTGRES_PASSWORD=$(python -c 'import secrets; print(secrets.token_hex(16))')
+        SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(32))')
+    fi
     
     # 写入配置
     sed -i "s/OPENAI_API_KEY=.*/OPENAI_API_KEY=$OPENAI_API_KEY/" .env
@@ -82,7 +91,7 @@ fi
 
 echo ""
 echo "🐳 启动 Docker 服务..."
-docker-compose up -d
+$COMPOSE_CMD up -d
 
 echo ""
 echo "⏳ 等待服务启动..."
@@ -92,11 +101,11 @@ echo ""
 echo "🔍 健康检查..."
 
 # 检查数据库
-if docker-compose exec -T db pg_isready -U solocrm &> /dev/null; then
+if $COMPOSE_CMD exec -T db pg_isready -U solocrm &> /dev/null; then
     echo "✅ 数据库运行正常"
 else
     echo "❌ 数据库启动失败"
-    docker-compose logs db
+    $COMPOSE_CMD logs db
     exit 1
 fi
 
@@ -127,9 +136,11 @@ echo "   数据库密码：$POSTGRES_PASSWORD"
 echo "   (已保存在 .env 文件)"
 echo ""
 echo "💡 常用命令："
-echo "   查看日志：docker-compose logs -f"
-echo "   停止服务：docker-compose down"
-echo "   重启服务：docker-compose restart"
+echo "   查看日志：docker compose logs -f"
+echo "   停止服务：docker compose down"
+echo "   重启服务：docker compose restart"
+echo "   审计检查：solocrm audit summary --json"
+echo "   失败追溯：solocrm audit errors --json"
 echo "   安装 CLI：python -m pip install -e ."
 echo "   健康检查：solocrm doctor --json"
 echo ""

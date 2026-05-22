@@ -133,3 +133,9 @@ class AgentActionLogResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
+class AgentAuditSummary(BaseModel):
+    status_counts: dict[str, int]
+    action_counts: dict[str, int]
+    agent_counts: dict[str, int]
+    latest_errors: list[AgentActionLogResponse]

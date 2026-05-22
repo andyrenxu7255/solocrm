@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: install-local test doctor
+.PHONY: install-local test doctor audit
 
 install-local:
 	$(PYTHON) -m pip install -e .
@@ -10,3 +10,6 @@ test:
 
 doctor:
 	solocrm doctor --json
+
+audit:
+	solocrm audit summary --json

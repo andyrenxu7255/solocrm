@@ -7,7 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.domains.business.repository import ArtifactRepository, EngagementRepository
+from app.domains.business.repository import AgentActionLogRepository
 from app.domains.business.schemas import (
+    AgentActionLogResponse,
+    AgentAuditSummary,
     ArtifactCreate,
     ArtifactResponse,
     ArtifactUpdate,
@@ -26,6 +29,7 @@ from app.shared.schemas import APIResponse, PaginatedResponse, PaginationParams
 engagement_router = APIRouter(prefix="/engagements", tags=["Business Engagements"])
 artifact_router = APIRouter(prefix="/artifacts", tags=["Business Artifacts"])
 business_router = APIRouter(prefix="/business", tags=["Business Summary"])
+audit_router = APIRouter(prefix="/agent/audit", tags=["Agent Audit"])
 
 
 def _engagement_service(db: AsyncSession = Depends(get_db)) -> EngagementService:
@@ -34,6 +38,12 @@ def _engagement_service(db: AsyncSession = Depends(get_db)) -> EngagementService
 
 def _artifact_service(db: AsyncSession = Depends(get_db)) -> ArtifactService:
     return ArtifactService(ArtifactRepository(db))
+
+
+def _audit_repository(
+    db: AsyncSession = Depends(get_db),
+) -> AgentActionLogRepository:
+    return AgentActionLogRepository(db)
 
 
 @engagement_router.get(
@@ -156,3 +166,57 @@ async def business_summary(db: AsyncSession = Depends(get_db)):
 async def business_export(db: AsyncSession = Depends(get_db)):
     export = await BusinessReadService(db).export_agent_context()
     return APIResponse.ok(export)
+
+
+@audit_router.get(
+    "", response_model=APIResponse[PaginatedResponse[AgentActionLogResponse]]
+)
+async def list_agent_audit_logs(
+    agent_name: str | None = None,
+    action: str | None = None,
+    status: str | None = None,
+    target_type: str | None = None,
+    pagination: PaginationParams = Depends(),
+    repo: AgentActionLogRepository = Depends(_audit_repository),
+):
+    items, total = await repo.get_filtered(
+        pagination,
+        agent_name=agent_name,
+        action=action,
+        status=status,
+        target_type=target_type,
+    )
+    return APIResponse.ok(
+        PaginatedResponse.of(
+            [AgentActionLogResponse.model_validate(i) for i in items],
+            total,
+            pagination,
+        )
+    )
+
+
+@audit_router.get("/summary", response_model=APIResponse[AgentAuditSummary])
+async def summarize_agent_audit_logs(
+    repo: AgentActionLogRepository = Depends(_audit_repository),
+):
+    summary = await repo.get_summary()
+    return APIResponse.ok(
+        AgentAuditSummary(
+            status_counts=summary["status_counts"],
+            action_counts=summary["action_counts"],
+            agent_counts=summary["agent_counts"],
+            latest_errors=[
+                AgentActionLogResponse.model_validate(item)
+                for item in summary["latest_errors"]
+            ],
+        )
+    )
+
+
+@audit_router.get("/{audit_id}", response_model=APIResponse[AgentActionLogResponse])
+async def get_agent_audit_log(
+    audit_id: UUID,
+    repo: AgentActionLogRepository = Depends(_audit_repository),
+):
+    item = await repo.get_by_id(audit_id)
+    return APIResponse.ok(AgentActionLogResponse.model_validate(item))

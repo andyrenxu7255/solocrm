@@ -10,6 +10,7 @@ from app.database import init_pgvector
 from app.ai.router import router as ai_router
 from app.domains.agent.router import router as agent_router
 from app.domains.business.router import (
+    audit_router,
     artifact_router,
     business_router,
     engagement_router,
@@ -48,6 +49,7 @@ app.add_middleware(
 
 app.include_router(ai_router)
 app.include_router(agent_router)
+app.include_router(audit_router)
 app.include_router(business_router)
 app.include_router(engagement_router)
 app.include_router(artifact_router)

@@ -70,7 +70,8 @@ API 网关 (FastAPI)
 | 部署 | Docker Compose | 一键启动，用户友好 |
 | AI | OpenAI 兼容 API | 用户自己控制 Key，不绑定厂商 |
 | Agent 接口 | REST command API | `/agent/actions` + `/business/export` |
-| Agent CLI | Python console script | `solocrm doctor` / `solocrm engagement` / `solocrm export` |
+| Agent CLI | Python console script | `solocrm doctor` / `solocrm engagement` / `solocrm audit` / `solocrm export` |
+| Agent 审计 | API + CLI | `/agent/audit` + 失败动作留痕 |
 
 ## 📂 目录结构
 
@@ -209,6 +210,7 @@ solocrm/
 python -m pip install -e .
 solocrm doctor --json
 solocrm capabilities
+solocrm audit summary --json
 solocrm export --out ./solocrm-export.json
 ```
 
@@ -237,6 +239,8 @@ docker-compose up -d
 
 - [ ] agent 能创建和更新 engagement
 - [ ] agent 能新增业务材料
+- [ ] agent 成功和失败写入都能形成审计日志
+- [ ] agent 能用 `solocrm audit` 查询失败原因
 - [ ] `/business/export` 能导出整套上下文
 - [ ] 无 AI Key 时 CRUD 仍可工作
 - [ ] Docker Compose 一键启动成功

@@ -130,3 +130,111 @@ def test_doctor_returns_nonzero_when_unhealthy(monkeypatch, capsys):
     payload = json.loads(out)
     assert payload["ok"] is False
     assert payload["data"]["ok"] is False
+
+
+def test_audit_list_builds_filtered_query(monkeypatch, capsys):
+    calls = []
+
+    def fake_request(self, method, path, *, body=None, query=None):
+        calls.append((method, path, body, query))
+        return {
+            "code": 0,
+            "data": {"items": [], "total": 0, "page": 2, "page_size": 10, "total_pages": 0},
+            "message": "success",
+        }
+
+    monkeypatch.setattr(cli.ApiClient, "request", fake_request)
+
+    rc = cli.main(
+        [
+            "--base-url",
+            "http://example.test",
+            "--json",
+            "audit",
+            "list",
+            "--agent-name",
+            "hermes",
+            "--status",
+            "error",
+            "--target-type",
+            "engagement",
+            "--page",
+            "2",
+            "--page-size",
+            "10",
+        ]
+    )
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    payload = json.loads(out)
+    assert payload["ok"] is True
+    assert calls[0] == (
+        "GET",
+        "/agent/audit",
+        None,
+        {
+            "agent_name": "hermes",
+            "action": None,
+            "status": "error",
+            "target_type": "engagement",
+            "page": 2,
+            "page_size": 10,
+        },
+    )
+
+
+def test_audit_errors_forces_error_status(monkeypatch, capsys):
+    calls = []
+
+    def fake_request(self, method, path, *, body=None, query=None):
+        calls.append((method, path, body, query))
+        return {
+            "code": 0,
+            "data": {"items": [], "total": 0, "page": 1, "page_size": 20, "total_pages": 0},
+            "message": "success",
+        }
+
+    monkeypatch.setattr(cli.ApiClient, "request", fake_request)
+
+    rc = cli.main(["--json", "audit", "errors", "--agent-name", "openclaw"])
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert json.loads(out)["ok"] is True
+    assert calls[0][1] == "/agent/audit"
+    assert calls[0][3]["agent_name"] == "openclaw"
+    assert calls[0][3]["status"] == "error"
+
+
+def test_audit_get_and_summary(monkeypatch, capsys):
+    calls = []
+    audit_id = "11111111-1111-1111-1111-111111111111"
+
+    def fake_request(self, method, path, *, body=None, query=None):
+        calls.append((method, path, body, query))
+        if path.endswith("/summary"):
+            return {
+                "code": 0,
+                "data": {"status_counts": {"ok": 1}, "action_counts": {}, "agent_counts": {}, "latest_errors": []},
+                "message": "success",
+            }
+        return {
+            "code": 0,
+            "data": {"id": audit_id, "status": "ok"},
+            "message": "success",
+        }
+
+    monkeypatch.setattr(cli.ApiClient, "request", fake_request)
+
+    rc_get = cli.main(["--json", "audit", "get", audit_id])
+    get_out = capsys.readouterr().out
+    rc_summary = cli.main(["--json", "audit", "summary"])
+    summary_out = capsys.readouterr().out
+
+    assert rc_get == 0
+    assert rc_summary == 0
+    assert json.loads(get_out)["ok"] is True
+    assert json.loads(summary_out)["ok"] is True
+    assert calls[0][1] == f"/agent/audit/{audit_id}"
+    assert calls[1][1] == "/agent/audit/summary"

@@ -27,7 +27,13 @@ solocrm capabilities
 solocrm summary
 ```
 
-4. Export everything before a risky change or migration:
+4. Check audit health:
+
+```bash
+solocrm audit summary --json
+```
+
+5. Export everything before a risky change or migration:
 
 ```bash
 solocrm export --out ./solocrm-export.json
@@ -40,6 +46,8 @@ solocrm export --out ./solocrm-export.json
 - Treat `engagements` as the main business record for sales, presales, and delivery.
 - Treat `business_artifacts` as the portable home for contracts, knowledge, proposals, and delivery notes.
 - Use direct database access only for backup, restore, or explicit maintenance.
+- After a failed write, run `solocrm audit errors --json` before retrying.
+- Stop after a second failed write and report the latest audit id to the user.
 
 ## Core Commands
 
@@ -49,6 +57,10 @@ solocrm export --out ./solocrm-export.json
 - `solocrm engagement get <id>`
 - `solocrm artifact list`
 - `solocrm artifact get <id>`
+- `solocrm audit summary --json`
+- `solocrm audit list --status ok --json`
+- `solocrm audit errors --json`
+- `solocrm audit get <id> --json`
 - `solocrm summary`
 
 ### Write
@@ -67,6 +79,16 @@ solocrm export --out ./solocrm-export.json
 
 - `solocrm db info`
 
+## Failure Recovery
+
+When a write command returns `ok: false` or an API envelope with `code: 1`:
+
+1. Read the error message.
+2. Run `solocrm audit errors --json`.
+3. Correct the JSON payload, action name, or target id.
+4. Retry once.
+5. If it fails again, report the latest audit record and stop.
+
 ## Environment
 
 Use these when connecting to a remote backend:
@@ -82,5 +104,6 @@ SOLOCRM_AGENT_NAME=openclaw
 ```bash
 solocrm engagement create --payload-json '{"name":"北京电力","company":"北京电力","stage":"sales","owner":"Andy"}'
 solocrm artifact create --payload-json '{"artifact_type":"knowledge","title":"客户会议纪要","content":"...","source":"hermes"}'
+solocrm audit errors --json
 solocrm export --out ./solocrm-export.json
 ```

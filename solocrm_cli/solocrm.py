@@ -199,6 +199,29 @@ def build_parser() -> argparse.ArgumentParser:
     add_payload_flags(artifact_create)
     artifact_create.set_defaults(handler=cmd_artifact_create)
 
+    audit = sub.add_parser("audit", help="inspect agent action audit logs")
+    audit_sub = audit.add_subparsers(dest="audit_command", required=True)
+    audit_list = audit_sub.add_parser("list", help="list audited agent actions")
+    audit_list.add_argument("--agent-name")
+    audit_list.add_argument("--action")
+    audit_list.add_argument("--status")
+    audit_list.add_argument("--target-type")
+    audit_list.add_argument("--page", type=int, default=1)
+    audit_list.add_argument("--page-size", type=int, default=20)
+    audit_list.set_defaults(handler=cmd_audit_list)
+    audit_errors = audit_sub.add_parser("errors", help="list failed agent actions")
+    audit_errors.add_argument("--agent-name")
+    audit_errors.add_argument("--action")
+    audit_errors.add_argument("--target-type")
+    audit_errors.add_argument("--page", type=int, default=1)
+    audit_errors.add_argument("--page-size", type=int, default=20)
+    audit_errors.set_defaults(handler=cmd_audit_errors)
+    audit_get = audit_sub.add_parser("get", help="read one audit log")
+    audit_get.add_argument("audit_id")
+    audit_get.set_defaults(handler=cmd_audit_get)
+    audit_summary = audit_sub.add_parser("summary", help="summarize agent audit health")
+    audit_summary.set_defaults(handler=cmd_audit_summary)
+
     request = sub.add_parser("request", help="raw HTTP escape hatch")
     request.add_argument(
         "method",
@@ -389,6 +412,48 @@ def cmd_artifact_get(args: argparse.Namespace, client: ApiClient) -> dict[str, A
 
 def cmd_artifact_create(args: argparse.Namespace, client: ApiClient) -> dict[str, Any]:
     return run_agent_action(client, args.agent, "add_artifact", read_payload(args))
+
+
+def cmd_audit_list(args: argparse.Namespace, client: ApiClient) -> dict[str, Any]:
+    return unwrap(
+        client.request(
+            "GET",
+            "/agent/audit",
+            query={
+                "agent_name": args.agent_name,
+                "action": args.action,
+                "status": args.status,
+                "target_type": args.target_type,
+                "page": args.page,
+                "page_size": args.page_size,
+            },
+        )
+    )
+
+
+def cmd_audit_errors(args: argparse.Namespace, client: ApiClient) -> dict[str, Any]:
+    return unwrap(
+        client.request(
+            "GET",
+            "/agent/audit",
+            query={
+                "agent_name": args.agent_name,
+                "action": args.action,
+                "status": "error",
+                "target_type": args.target_type,
+                "page": args.page,
+                "page_size": args.page_size,
+            },
+        )
+    )
+
+
+def cmd_audit_get(args: argparse.Namespace, client: ApiClient) -> dict[str, Any]:
+    return unwrap(client.request("GET", f"/agent/audit/{args.audit_id}"))
+
+
+def cmd_audit_summary(_args: argparse.Namespace, client: ApiClient) -> dict[str, Any]:
+    return unwrap(client.request("GET", "/agent/audit/summary"))
 
 
 def cmd_request(args: argparse.Namespace, client: ApiClient) -> dict[str, Any]:

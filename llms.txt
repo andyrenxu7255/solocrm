@@ -1,0 +1,30 @@
+# SoloCRM
+
+> Agent-first local CRM for solo operators and small companies. Agents manage sales, presales, delivery, contracts, knowledge, audit logs, and exports through a stable CLI and HTTP API.
+
+## Start Here
+
+- [Agent Entry](AGENTS.md): Critical operating rules, first commands, and API surfaces.
+- [README](README.md): User-facing deployment and feature overview.
+- [Project Overview](PROJECT_OVERVIEW.md): Architecture, data model, and acceptance criteria.
+
+## Agent Operation
+
+- [Agent Deployment Guide](docs/agent-deployment-guide.md): OpenClaw/Hermes setup, CLI exposure, database policy, and audit workflow.
+- [API Examples](docs/agent-api-examples.md): HTTP examples for capabilities, actions, audit, and export.
+- [SoloCRM Skill](skills/solocrm/SKILL.md): Skill instructions for agents operating the CRM.
+- [Skill Usage Reference](skills/solocrm/references/usage.md): Command examples and safety rules.
+
+## Release And Audit
+
+- [Release Readiness Checklist](docs/release-readiness-checklist.md): Verification commands and promotion criteria.
+- [Agent-First Redesign](docs/agent-first-redesign.md): Design notes for the sales, presales, and delivery model.
+- [OpenClaw Install](OPENCLAW_INSTALL.md): One-command OpenClaw deployment path.
+
+## Code Surfaces
+
+- [CLI](solocrm_cli/solocrm.py): Agent command line entry.
+- [Agent Router](backend/app/domains/agent/router.py): `/agent/capabilities` and `/agent/actions`.
+- [Business Router](backend/app/domains/business/router.py): engagements, artifacts, summary, export, and audit routes.
+- [Business Schemas](backend/app/domains/business/schemas.py): request and response shapes.
+- [Business Models](backend/app/domains/business/models.py): PostgreSQL tables for engagements, artifacts, and audit logs.

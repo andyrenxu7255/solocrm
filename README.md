@@ -10,7 +10,8 @@
 2. **agent 统一操作入口**
 3. **合同范本和知识可持久化迁移**
 4. **本地 PostgreSQL 存储**
-5. **导出整体业务上下文**
+5. **agent 操作审计和失败追溯**
+6. **导出整体业务上下文**
 
 ## 🎯 设计哲学
 
@@ -81,6 +82,8 @@ solocrm doctor --json
 ```bash
 solocrm capabilities
 solocrm engagement list
+solocrm audit summary --json
+solocrm audit errors --json
 solocrm db info
 solocrm export --out ./solocrm-export.json
 ```
@@ -92,7 +95,8 @@ solocrm export --out ./solocrm-export.json
 1. 创建一个业务过程，标记它处于销售、售前还是交付。
 2. 让 agent 维护客户、行动项、风险和推进阶段。
 3. 把合同范本、知识、方案和交付材料沉淀到可导出的对象里。
-4. 需要迁移时，直接导出整套业务上下文。
+4. 如果写入失败，agent 先查看审计错误再修正重试。
+5. 需要迁移时，直接导出整套业务上下文。
 
 ## 🏗️ 技术架构
 
@@ -101,7 +105,8 @@ solocrm export --out ./solocrm-export.json
 - **数据库**: PostgreSQL + pgvector
 - **AI**: OpenAI 兼容 API
 - **Agent 协议**: `/agent/capabilities` 和 `/agent/actions`
-- **Agent CLI**: `solocrm doctor` / `solocrm engagement` / `solocrm export`
+- **Agent 审计**: `/agent/audit` 和 `solocrm audit`
+- **Agent CLI**: `solocrm doctor` / `solocrm engagement` / `solocrm audit` / `solocrm export`
 - **部署**: Docker Compose
 
 ## 🗺️ 路线图

@@ -13,6 +13,7 @@ If the backend is reachable, continue with:
 ```bash
 solocrm capabilities
 solocrm summary
+solocrm audit summary --json
 ```
 
 ## Write Path
@@ -24,6 +25,21 @@ Prefer these commands:
 - `solocrm engagement advance`
 - `solocrm artifact create`
 - `solocrm export`
+
+All writes should preserve audit logs through `/agent/actions`.
+
+## Audit Path
+
+Use these commands whenever you need traceability:
+
+```bash
+solocrm audit summary --json
+solocrm audit list --agent-name hermes --page-size 20 --json
+solocrm audit errors --json
+solocrm audit get <audit_id> --json
+```
+
+If a write fails, inspect the latest error audit before retrying.
 
 ## Raw Escape Hatch
 
