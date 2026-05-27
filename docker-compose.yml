@@ -32,6 +32,7 @@ services:
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       SECRET_KEY: ${SECRET_KEY:-secret-change-me}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8000}
+      ENABLE_APACHE_AGE: ${ENABLE_APACHE_AGE:-false}
     ports:
       - "8000:8000"
     volumes:

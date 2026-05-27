@@ -1,0 +1,1 @@
+"""Business fact graph domain."""

@@ -27,13 +27,19 @@ solocrm capabilities
 solocrm summary
 ```
 
-4. Check audit health:
+4. Use graph recall before serious sales or presales preparation:
+
+```bash
+solocrm graph recall --industry 能源 --domain 数据中台 --json
+```
+
+5. Check audit health:
 
 ```bash
 solocrm audit summary --json
 ```
 
-5. Export everything before a risky change or migration:
+6. Export everything before a risky change or migration:
 
 ```bash
 solocrm export --out ./solocrm-export.json
@@ -45,6 +51,8 @@ solocrm export --out ./solocrm-export.json
 - Keep all writes auditable through `/agent/actions`.
 - Treat `engagements` as the main business record for sales, presales, and delivery.
 - Treat `business_artifacts` as the portable home for contracts, knowledge, proposals, and delivery notes.
+- Treat `graph_nodes` and `graph_edges` as the fact memory for industry, customer, domain, project, case, and artifact recall.
+- Use graph recall as the gate before broad semantic recall.
 - Use direct database access only for backup, restore, or explicit maintenance.
 - After a failed write, run `solocrm audit errors --json` before retrying.
 - Stop after a second failed write and report the latest audit id to the user.
@@ -57,6 +65,9 @@ solocrm export --out ./solocrm-export.json
 - `solocrm engagement get <id>`
 - `solocrm artifact list`
 - `solocrm artifact get <id>`
+- `solocrm graph recall --industry <industry> --domain <domain> --json`
+- `solocrm graph nodes --node-type domain --json`
+- `solocrm graph edges --relation-type serves_domain --json`
 - `solocrm audit summary --json`
 - `solocrm audit list --status ok --json`
 - `solocrm audit errors --json`
@@ -69,6 +80,8 @@ solocrm export --out ./solocrm-export.json
 - `solocrm engagement update <id> --payload-json '{...}'`
 - `solocrm engagement advance <id> --stage delivery`
 - `solocrm artifact create --payload-json '{...}'`
+- `solocrm graph fact --payload-json '{...}'`
+- `solocrm graph rebuild --json`
 
 ### Escape Hatch
 
@@ -104,6 +117,7 @@ SOLOCRM_AGENT_NAME=openclaw
 ```bash
 solocrm engagement create --payload-json '{"name":"北京电力","company":"北京电力","stage":"sales","owner":"Andy"}'
 solocrm artifact create --payload-json '{"artifact_type":"knowledge","title":"客户会议纪要","content":"...","source":"hermes"}'
+solocrm graph fact --payload-json '{"industry":"能源","customer":"北京电力","domain":"数据中台","project":"数据治理项目"}'
 solocrm audit errors --json
 solocrm export --out ./solocrm-export.json
 ```

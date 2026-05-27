@@ -21,6 +21,8 @@ from app.domains.business.service import (
     artifact_service,
     engagement_service,
 )
+from app.domains.graph.schemas import GraphFactInput, GraphRecallRequest
+from app.domains.graph.service import GraphMemoryService
 from app.shared.exceptions import NotFoundError, ValidationError
 from app.shared.schemas import APIResponse
 
@@ -32,6 +34,9 @@ ACTION_DESCRIPTIONS = {
     "advance_stage": "Move an engagement to sales, presales, contract, delivery, renewal, or closed.",
     "add_artifact": "Persist contract templates, knowledge, proposals, delivery notes, or other portable assets.",
     "get_pipeline_summary": "Return structured sales/presales/delivery summary for planning.",
+    "upsert_graph_fact": "Create or update business graph facts for industry/customer/domain/project relationships.",
+    "graph_recall": "Recall cases and artifacts through graph-gated relationships before semantic ranking.",
+    "rebuild_graph": "Rebuild graph memory from customers, cases, engagements, and artifacts.",
 }
 
 
@@ -56,6 +61,16 @@ async def capabilities():
                 "delivery_note",
                 "meeting_note",
                 "playbook",
+            ],
+            "graph_node_types": [
+                "industry",
+                "customer",
+                "domain",
+                "project",
+                "case",
+                "artifact",
+                "product",
+                "city",
             ],
         }
     )
@@ -131,6 +146,28 @@ async def run_action(
             summary = await BusinessReadService(db).summarize_pipeline()
             target_type = "business_summary"
             result = summary.model_dump(mode="json")
+
+        elif action == "upsert_graph_fact":
+            graph = await GraphMemoryService(db).upsert_fact(
+                GraphFactInput.model_validate(payload)
+            )
+            target_type = "graph_fact"
+            result = graph.model_dump(mode="json")
+
+        elif action == "graph_recall":
+            recall = await GraphMemoryService(db).recall(
+                GraphRecallRequest.model_validate(payload)
+            )
+            target_type = "graph_recall"
+            result = recall.model_dump(mode="json")
+
+        elif action == "rebuild_graph":
+            graph = await GraphMemoryService(db).rebuild_from_sources()
+            target_type = "graph_rebuild"
+            result = {
+                "nodes": len(graph.nodes),
+                "edges": len(graph.edges),
+            }
 
         else:
             raise ValidationError(f"Unsupported agent action: {action}", "action")

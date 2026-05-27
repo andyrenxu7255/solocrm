@@ -53,6 +53,7 @@ Expose these commands to Hermes as shell tools or approved CLI actions:
 - `solocrm summary`
 - `solocrm engagement create|update|advance|get|list`
 - `solocrm artifact create|get|list`
+- `solocrm graph fact|recall|rebuild|nodes|edges`
 - `solocrm audit summary|list|errors|get`
 - `solocrm export --out <path>`
 
@@ -73,6 +74,16 @@ solocrm doctor --json
 
 If you already have a broken `solocrm` command from an old install, reinstall this repo after uninstalling the stale one.
 
+## Frontend Build
+
+The Docker frontend builder uses `node:20.19-alpine` because Vite 7 requires Node.js 20.19 or newer. For local frontend development, use Node.js 20.19+ or 22.12+ before running:
+
+```bash
+cd frontend
+npm ci
+npm run build
+```
+
 ## DB Access Policy
 
 The normal path is API/CLI. Use direct database access only for:
@@ -89,6 +100,44 @@ docker compose exec db psql -U ${POSTGRES_USER:-solocrm} -d ${POSTGRES_DB:-soloc
 ```
 
 The CLI also exposes `solocrm db info` for a quick reminder of the approved backup and psql paths.
+
+## Graph Memory
+
+Use graph memory for factual sales recall before broad semantic search.
+
+The default deployment stores graph memory in PostgreSQL tables:
+
+- `graph_nodes`
+- `graph_edges`
+
+This works on the standard `pgvector/pgvector:pg16` image. Apache AGE is optional. If you install AGE in PostgreSQL, set:
+
+```bash
+ENABLE_APACHE_AGE=true
+```
+
+AGE deployment notes:
+
+- The Apache AGE site announces PostgreSQL 16 compatibility, and the official downloads page includes a PostgreSQL 16 release.
+- The default Docker Compose file does not install AGE, so leave `ENABLE_APACHE_AGE=false` unless your PostgreSQL image already includes the `age` extension.
+- Graph recall does not require AGE. AGE is reserved for deeper graph analytics and openCypher traversal once the operator chooses a graph-enabled PostgreSQL image.
+
+Core commands:
+
+```bash
+solocrm graph fact --payload-json '{"industry":"能源","customer":"北京电力","domain":"数据中台","project":"数据治理项目"}'
+solocrm graph recall --industry 能源 --domain 数据中台 --json
+solocrm graph rebuild --json
+solocrm graph nodes --node-type industry --json
+solocrm graph edges --relation-type serves_domain --json
+```
+
+Agent rule:
+
+1. Use `solocrm graph recall` when preparing for a new customer.
+2. Prefer recalled items that share explicit industry/domain/customer/project nodes.
+3. Read `paths` and `evidence` before using an old case or material.
+4. Use semantic search only after graph recall has defined a candidate set.
 
 ## Audit Trail
 

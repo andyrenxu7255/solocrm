@@ -13,6 +13,7 @@ If the backend is reachable, continue with:
 ```bash
 solocrm capabilities
 solocrm summary
+solocrm graph recall --industry 能源 --domain 数据中台 --json
 solocrm audit summary --json
 ```
 
@@ -24,6 +25,8 @@ Prefer these commands:
 - `solocrm engagement update`
 - `solocrm engagement advance`
 - `solocrm artifact create`
+- `solocrm graph fact`
+- `solocrm graph rebuild`
 - `solocrm export`
 
 All writes should preserve audit logs through `/agent/actions`.
@@ -40,6 +43,19 @@ solocrm audit get <audit_id> --json
 ```
 
 If a write fails, inspect the latest error audit before retrying.
+
+## Graph Recall
+
+Use graph recall when the user asks for old cases, reusable material, similar customers, or cross-industry/domain reasoning.
+
+```bash
+solocrm graph fact --payload-json '{"industry":"能源","customer":"北京电力","domain":"数据中台","project":"数据治理项目"}'
+solocrm graph recall --industry 能源 --domain 数据中台 --json
+solocrm graph nodes --node-type customer --json
+solocrm graph edges --relation-type in_industry --json
+```
+
+Read `shared_nodes` and `paths` before using a recalled case.
 
 ## Raw Escape Hatch
 

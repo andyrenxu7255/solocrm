@@ -44,6 +44,7 @@ SoloCRM：请问这个项目是在哪个行业？什么细分领域？
 
 - `solocrm doctor --json`
 - `solocrm capabilities`
+- `solocrm graph recall --industry 能源 --domain 数据中台 --json`
 - `solocrm engagement create`
 - `solocrm artifact create`
 - `solocrm audit errors --json`
@@ -100,6 +101,14 @@ solocrm audit errors --json
 ```
 
 先查看最新失败动作的 `message` 和审计记录，再修正 payload 重试。
+
+### 要找老案例共同点？
+
+```bash
+solocrm graph recall --industry 能源 --domain 数据中台 --json
+```
+
+优先使用返回里的 `shared_nodes` 和 `paths`，再决定是否补充语义搜索。
 
 ## 🎯 优势
 

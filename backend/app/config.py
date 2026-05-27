@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     secret_key: str = "change-me"
     allowed_origins: str = "http://localhost:3000,http://localhost:8000"
     openclaw_enabled: bool = False
+    enable_apache_age: bool = False
 
 
 @lru_cache(maxsize=1)

@@ -90,6 +90,7 @@ class BusinessReadService:
     async def export_agent_context(self) -> dict:
         from app.domains.case.models import SuccessCase
         from app.domains.customer.models import Customer
+        from app.domains.graph.models import GraphEdge, GraphNode
         from app.domains.todo.models import Todo
         from app.domains.visit.models import VisitPlan, VisitRecord
 
@@ -100,6 +101,8 @@ class BusinessReadService:
             "engagements": Engagement,
             "artifacts": BusinessArtifact,
             "agent_action_logs": AgentActionLog,
+            "graph_nodes": GraphNode,
+            "graph_edges": GraphEdge,
             "visit_plans": VisitPlan,
             "visit_records": VisitRecord,
             "todos": Todo,
@@ -108,7 +111,7 @@ class BusinessReadService:
             exports[key] = [_serialize_model(row) for row in rows]
 
         return {
-            "format": "solocrm-agent-context-v1",
+            "format": "solocrm-agent-context-v2",
             "tables": exports,
         }
 

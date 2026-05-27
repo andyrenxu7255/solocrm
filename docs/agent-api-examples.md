@@ -115,6 +115,56 @@ Summary shape:
 }
 ```
 
+## Graph Memory
+
+Upsert one fact:
+
+```bash
+POST /graph/facts
+{
+  "industry": "能源",
+  "customer": "北京电力",
+  "domain": "数据中台",
+  "project": "数据治理项目",
+  "evidence": "北京电力在能源行业做过数据中台项目"
+}
+```
+
+Recall through graph gates:
+
+```bash
+POST /graph/recall
+{
+  "industry": "能源",
+  "domain": "数据中台",
+  "query": "找可复用案例和材料",
+  "include_artifacts": true,
+  "limit": 10
+}
+```
+
+The response returns matched `query_nodes`, recalled `items`, shared graph nodes, and explainable `paths`.
+
+Rebuild graph from existing records:
+
+```bash
+POST /graph/rebuild
+```
+
+Agent action equivalents:
+
+```bash
+POST /agent/actions
+{
+  "agent_name": "hermes",
+  "action": "graph_recall",
+  "payload": {
+    "industry": "能源",
+    "domain": "数据中台"
+  }
+}
+```
+
 ## Export
 
 ```bash

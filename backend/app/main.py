@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.database import init_pgvector
+from app.database import init_extensions_and_schema
 from app.ai.router import router as ai_router
 from app.domains.agent.router import router as agent_router
 from app.domains.business.router import (
@@ -17,6 +17,7 @@ from app.domains.business.router import (
 )
 from app.domains.case.router import router as case_router
 from app.domains.customer.router import router as customer_router
+from app.domains.graph.router import router as graph_router
 from app.domains.product.router import router as product_router
 from app.domains.search.router import router as search_router
 from app.domains.todo.router import router as todo_router
@@ -27,7 +28,7 @@ from app.shared.schemas import APIResponse
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_pgvector()
+    await init_extensions_and_schema()
     yield
 
 
@@ -58,6 +59,7 @@ app.include_router(customer_router)
 app.include_router(plan_router)
 app.include_router(record_router)
 app.include_router(search_router)
+app.include_router(graph_router)
 app.include_router(todo_router)
 app.include_router(product_router)
 

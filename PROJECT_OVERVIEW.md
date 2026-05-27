@@ -9,6 +9,7 @@
 - 销售、售前、交付统一建模
 - 人类通过 agent 维护 CRM
 - 合同、知识、方案、交付材料都可迁移导出
+- 行业、客户、领域、项目、案例、材料形成可解释图记忆
 - 数据默认留在自己的 PostgreSQL
 - 支持 OpenClaw / Hermes 风格的对话入口
 - 提供 `solocrm` CLI 作为 agent 的稳定命令层
@@ -19,7 +20,8 @@
 2. **本地优先** - 不依赖云端表格作为主存储
 3. **可迁移** - 业务过程与材料可以整体导出
 4. **开箱即用** - 默认配置就能跑，不用复杂设置
-5. **易于扩展** - 清晰分层，模块化设计，好改好维护
+5. **图记忆优先** - 重要销售召回先用事实图门控，再做语义补充
+6. **易于扩展** - 清晰分层，模块化设计，好改好维护
 
 ## 🏗️ 架构概览
 
@@ -42,7 +44,7 @@ API 网关 (FastAPI)
   ↓
 数据访问层 (Repositories)
   ↓
-数据库 (PostgreSQL + pgvector)
+数据库 (PostgreSQL + pgvector + 可选 Apache AGE)
 ```
 
 ### 数据架构（核心表）
@@ -56,6 +58,8 @@ API 网关 (FastAPI)
 7. `engagements` - 业务过程
 8. `business_artifacts` - 合同/知识/交付材料
 9. `agent_action_logs` - agent 操作审计
+10. `graph_nodes` - 行业/客户/领域/项目/案例/材料节点
+11. `graph_edges` - 节点之间的事实关系、证据和置信度
 
 **导出策略**：结构化 JSON 导出整套业务上下文，方便备份、迁移、agent 读取
 
@@ -66,12 +70,13 @@ API 网关 (FastAPI)
 | 前端 | React + Vite + TailwindCSS | 生态成熟，开发快 |
 | 地图 | Leaflet | 开源轻量，够用 |
 | 后端 | Python + FastAPI | AI 生态好，开发快 |
-| 数据库 | PostgreSQL 16 + pgvector | 结构化 + 向量一个库，运维简单 |
+| 数据库 | PostgreSQL 16 + pgvector + 可选 Apache AGE | 结构化 + 向量 + 图记忆 |
 | 部署 | Docker Compose | 一键启动，用户友好 |
 | AI | OpenAI 兼容 API | 用户自己控制 Key，不绑定厂商 |
 | Agent 接口 | REST command API | `/agent/actions` + `/business/export` |
 | Agent CLI | Python console script | `solocrm doctor` / `solocrm engagement` / `solocrm audit` / `solocrm export` |
 | Agent 审计 | API + CLI | `/agent/audit` + 失败动作留痕 |
+| 图记忆 | PostgreSQL facts + 可选 AGE | `graph_nodes` / `graph_edges` / `/graph/recall` |
 
 ## 📂 目录结构
 
@@ -211,6 +216,7 @@ python -m pip install -e .
 solocrm doctor --json
 solocrm capabilities
 solocrm audit summary --json
+solocrm graph recall --industry 能源 --domain 数据中台 --json
 solocrm export --out ./solocrm-export.json
 ```
 
@@ -231,7 +237,9 @@ docker-compose up -d
 1. 用户通过 agent 创建一个销售机会。
 2. agent 推进它从销售到售前，再到交付。
 3. 关键合同范本和知识被沉淀为可迁移材料。
-4. 需要备份时，系统导出整套业务上下文。
+4. 行业、客户、领域、项目、案例、材料被沉淀为图记忆。
+5. 新客户准备阶段，agent 先通过图召回共同点和老材料。
+6. 需要备份时，系统导出整套业务上下文。
 
 ## ✅ 验收标准
 
@@ -241,6 +249,8 @@ docker-compose up -d
 - [ ] agent 能新增业务材料
 - [ ] agent 成功和失败写入都能形成审计日志
 - [ ] agent 能用 `solocrm audit` 查询失败原因
+- [ ] agent 能用 `solocrm graph recall` 按行业/领域召回案例和材料
+- [ ] 图召回结果能解释共享节点和关系路径
 - [ ] `/business/export` 能导出整套上下文
 - [ ] 无 AI Key 时 CRUD 仍可工作
 - [ ] Docker Compose 一键启动成功

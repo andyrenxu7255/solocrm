@@ -238,3 +238,107 @@ def test_audit_get_and_summary(monkeypatch, capsys):
     assert json.loads(summary_out)["ok"] is True
     assert calls[0][1] == f"/agent/audit/{audit_id}"
     assert calls[1][1] == "/agent/audit/summary"
+
+
+def test_graph_fact_routes_to_agent_action(monkeypatch, capsys):
+    calls = []
+
+    def fake_request(self, method, path, *, body=None, query=None):
+        calls.append((method, path, body, query))
+        return {
+            "code": 0,
+            "data": {"target_type": "graph_fact", "result": {"nodes": [], "edges": []}},
+            "message": "success",
+        }
+
+    monkeypatch.setattr(cli.ApiClient, "request", fake_request)
+
+    rc = cli.main(
+        [
+            "--json",
+            "graph",
+            "fact",
+            "--agent",
+            "hermes",
+            "--payload-json",
+            '{"industry":"能源","customer":"北京电力","domain":"数据中台","project":"数据治理项目"}',
+        ]
+    )
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert json.loads(out)["ok"] is True
+    assert calls[0][0] == "POST"
+    assert calls[0][1] == "/agent/actions"
+    assert calls[0][2]["agent_name"] == "hermes"
+    assert calls[0][2]["action"] == "upsert_graph_fact"
+    assert calls[0][2]["payload"]["domain"] == "数据中台"
+
+
+def test_graph_recall_builds_body(monkeypatch, capsys):
+    calls = []
+
+    def fake_request(self, method, path, *, body=None, query=None):
+        calls.append((method, path, body, query))
+        return {
+            "code": 0,
+            "data": {"query_nodes": [], "items": [], "gate": {"mode": "graph_first"}},
+            "message": "success",
+        }
+
+    monkeypatch.setattr(cli.ApiClient, "request", fake_request)
+
+    rc = cli.main(
+        [
+            "--json",
+            "graph",
+            "recall",
+            "--industry",
+            "能源",
+            "--domain",
+            "数据中台",
+            "--query",
+            "找同领域案例",
+            "--limit",
+            "5",
+            "--no-artifacts",
+        ]
+    )
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert json.loads(out)["ok"] is True
+    assert calls[0] == (
+        "POST",
+        "/graph/recall",
+        {
+            "industry": "能源",
+            "domain": "数据中台",
+            "query": "找同领域案例",
+            "include_artifacts": False,
+            "limit": 5,
+        },
+        None,
+    )
+
+
+def test_graph_rebuild_routes_to_agent_action(monkeypatch, capsys):
+    calls = []
+
+    def fake_request(self, method, path, *, body=None, query=None):
+        calls.append((method, path, body, query))
+        return {
+            "code": 0,
+            "data": {"target_type": "graph_rebuild", "result": {"nodes": 3, "edges": 4}},
+            "message": "success",
+        }
+
+    monkeypatch.setattr(cli.ApiClient, "request", fake_request)
+
+    rc = cli.main(["--json", "graph", "rebuild", "--agent", "openclaw"])
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert json.loads(out)["ok"] is True
+    assert calls[0][1] == "/agent/actions"
+    assert calls[0][2]["action"] == "rebuild_graph"

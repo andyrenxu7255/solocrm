@@ -12,6 +12,7 @@
 
 - [Agent Deployment Guide](docs/agent-deployment-guide.md): OpenClaw/Hermes setup, CLI exposure, database policy, and audit workflow.
 - [API Examples](docs/agent-api-examples.md): HTTP examples for capabilities, actions, audit, and export.
+- [Graph Memory Design](docs/graph-memory-design.md): Fact graph story line, schema, recall contract, and AGE option.
 - [SoloCRM Skill](skills/solocrm/SKILL.md): Skill instructions for agents operating the CRM.
 - [Skill Usage Reference](skills/solocrm/references/usage.md): Command examples and safety rules.
 
@@ -28,3 +29,5 @@
 - [Business Router](backend/app/domains/business/router.py): engagements, artifacts, summary, export, and audit routes.
 - [Business Schemas](backend/app/domains/business/schemas.py): request and response shapes.
 - [Business Models](backend/app/domains/business/models.py): PostgreSQL tables for engagements, artifacts, and audit logs.
+- [Graph Router](backend/app/domains/graph/router.py): fact graph nodes, edges, facts, rebuild, and recall.
+- [Graph Service](backend/app/domains/graph/service.py): graph-gated recall and fact ingestion logic.

@@ -10,13 +10,15 @@
 2. **agent 统一操作入口**
 3. **合同范本和知识可持久化迁移**
 4. **本地 PostgreSQL 存储**
-5. **agent 操作审计和失败追溯**
-6. **导出整体业务上下文**
+5. **行业/客户/领域/项目图记忆**
+6. **agent 操作审计和失败追溯**
+7. **导出整体业务上下文**
 
 ## 🎯 设计哲学
 
 - **Agent-first** - 人类通过自然语言让 agent 操作 CRM
 - **本地优先** - 不依赖飞书多维表格这类云表格作为主存储
+- **图记忆优先** - 重要销售召回先用事实图门控，再做语义补充
 - **可迁移** - 合同、知识、交付资产都能整体导出
 - **用户掌控** - 数据存在你自己的数据库里
 - **一键部署** - Docker Compose 启动
@@ -82,6 +84,7 @@ solocrm doctor --json
 ```bash
 solocrm capabilities
 solocrm engagement list
+solocrm graph recall --industry 能源 --domain 数据中台 --json
 solocrm audit summary --json
 solocrm audit errors --json
 solocrm db info
@@ -94,20 +97,23 @@ solocrm export --out ./solocrm-export.json
 
 1. 创建一个业务过程，标记它处于销售、售前还是交付。
 2. 让 agent 维护客户、行动项、风险和推进阶段。
-3. 把合同范本、知识、方案和交付材料沉淀到可导出的对象里。
-4. 如果写入失败，agent 先查看审计错误再修正重试。
-5. 需要迁移时，直接导出整套业务上下文。
+3. 把行业、客户、领域、项目、案例和材料沉淀成图关系。
+4. 面向新客户准备时，先用图召回共同点和老材料。
+5. 如果写入失败，agent 先查看审计错误再修正重试。
+6. 需要迁移时，直接导出整套业务上下文。
 
 ## 🏗️ 技术架构
 
 - **前端**: React + Vite + TailwindCSS + Leaflet
 - **后端**: Python + FastAPI
-- **数据库**: PostgreSQL + pgvector
+- **数据库**: PostgreSQL + pgvector + 可选 Apache AGE
 - **AI**: OpenAI 兼容 API
 - **Agent 协议**: `/agent/capabilities` 和 `/agent/actions`
+- **图记忆**: `/graph/facts` / `/graph/recall` / `solocrm graph`
 - **Agent 审计**: `/agent/audit` 和 `solocrm audit`
 - **Agent CLI**: `solocrm doctor` / `solocrm engagement` / `solocrm audit` / `solocrm export`
 - **部署**: Docker Compose
+- **前端构建**: Vite 7，需要 Node.js 20.19+ 或 22.12+
 
 ## 🗺️ 路线图
 

@@ -222,6 +222,41 @@ def build_parser() -> argparse.ArgumentParser:
     audit_summary = audit_sub.add_parser("summary", help="summarize agent audit health")
     audit_summary.set_defaults(handler=cmd_audit_summary)
 
+    graph = sub.add_parser("graph", help="operate graph-gated business memory")
+    graph_sub = graph.add_subparsers(dest="graph_command", required=True)
+    graph_fact = graph_sub.add_parser("fact", help="upsert one graph fact through audit log")
+    graph_fact.add_argument("--agent", default=os.getenv("SOLOCRM_AGENT_NAME", "cli"))
+    add_payload_flags(graph_fact)
+    graph_fact.set_defaults(handler=cmd_graph_fact)
+    graph_recall = graph_sub.add_parser("recall", help="recall cases and artifacts through graph gates")
+    graph_recall.add_argument("--industry")
+    graph_recall.add_argument("--customer")
+    graph_recall.add_argument("--domain")
+    graph_recall.add_argument("--project")
+    graph_recall.add_argument("--query")
+    graph_recall.add_argument("--limit", type=int, default=10)
+    graph_recall.add_argument(
+        "--no-artifacts",
+        action="store_true",
+        help="exclude business artifacts from graph recall",
+    )
+    graph_recall.set_defaults(handler=cmd_graph_recall)
+    graph_rebuild = graph_sub.add_parser("rebuild", help="rebuild graph memory through audit log")
+    graph_rebuild.add_argument("--agent", default=os.getenv("SOLOCRM_AGENT_NAME", "cli"))
+    graph_rebuild.set_defaults(handler=cmd_graph_rebuild)
+    graph_node_list = graph_sub.add_parser("nodes", help="list graph nodes")
+    graph_node_list.add_argument("--node-type")
+    graph_node_list.add_argument("--q")
+    graph_node_list.add_argument("--page", type=int, default=1)
+    graph_node_list.add_argument("--page-size", type=int, default=20)
+    graph_node_list.set_defaults(handler=cmd_graph_nodes)
+    graph_edge_list = graph_sub.add_parser("edges", help="list graph edges")
+    graph_edge_list.add_argument("--relation-type")
+    graph_edge_list.add_argument("--node-id")
+    graph_edge_list.add_argument("--page", type=int, default=1)
+    graph_edge_list.add_argument("--page-size", type=int, default=20)
+    graph_edge_list.set_defaults(handler=cmd_graph_edges)
+
     request = sub.add_parser("request", help="raw HTTP escape hatch")
     request.add_argument(
         "method",
@@ -456,6 +491,58 @@ def cmd_audit_summary(_args: argparse.Namespace, client: ApiClient) -> dict[str,
     return unwrap(client.request("GET", "/agent/audit/summary"))
 
 
+def cmd_graph_fact(args: argparse.Namespace, client: ApiClient) -> dict[str, Any]:
+    return run_agent_action(client, args.agent, "upsert_graph_fact", read_payload(args))
+
+
+def cmd_graph_recall(args: argparse.Namespace, client: ApiClient) -> dict[str, Any]:
+    payload = {
+        "industry": args.industry,
+        "customer": args.customer,
+        "domain": args.domain,
+        "project": args.project,
+        "query": args.query,
+        "include_artifacts": not args.no_artifacts,
+        "limit": args.limit,
+    }
+    clean = {key: value for key, value in payload.items() if value is not None}
+    return unwrap(client.request("POST", "/graph/recall", body=clean))
+
+
+def cmd_graph_rebuild(args: argparse.Namespace, client: ApiClient) -> dict[str, Any]:
+    return run_agent_action(client, args.agent, "rebuild_graph", {})
+
+
+def cmd_graph_nodes(args: argparse.Namespace, client: ApiClient) -> dict[str, Any]:
+    return unwrap(
+        client.request(
+            "GET",
+            "/graph/nodes",
+            query={
+                "node_type": args.node_type,
+                "q": args.q,
+                "page": args.page,
+                "page_size": args.page_size,
+            },
+        )
+    )
+
+
+def cmd_graph_edges(args: argparse.Namespace, client: ApiClient) -> dict[str, Any]:
+    return unwrap(
+        client.request(
+            "GET",
+            "/graph/edges",
+            query={
+                "relation_type": args.relation_type,
+                "node_id": args.node_id,
+                "page": args.page,
+                "page_size": args.page_size,
+            },
+        )
+    )
+
+
 def cmd_request(args: argparse.Namespace, client: ApiClient) -> dict[str, Any]:
     payload = read_json_body(args) if args.payload_json or args.payload_file else None
     return unwrap(client.request(args.method.upper(), args.path, body=payload))
@@ -471,6 +558,8 @@ def cmd_db_info(_args: argparse.Namespace, _client: ApiClient) -> dict[str, Any]
             "engagements",
             "business_artifacts",
             "agent_action_logs",
+            "graph_nodes",
+            "graph_edges",
             "customers",
             "success_cases",
             "visit_plans",

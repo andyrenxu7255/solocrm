@@ -151,6 +151,50 @@ def test_agent_unsupported_action_is_audited_as_error(monkeypatch) -> None:
     assert captured["audit"]["result_json"]["error_type"] == "ValidationError"
 
 
+def test_agent_graph_recall_action(monkeypatch) -> None:
+    audit_id = uuid4()
+    captured = {}
+
+    class FakeGraphMemoryService:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def recall(self, body):
+            captured["recall"] = body.model_dump()
+            return SimpleNamespace(
+                model_dump=lambda mode=None: {
+                    "query_nodes": [],
+                    "items": [],
+                    "gate": {"mode": "graph_first"},
+                }
+            )
+
+    class FakeAuditService:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def log(self, **kwargs):
+            captured["audit"] = kwargs
+            return SimpleNamespace(id=audit_id)
+
+    monkeypatch.setattr(agent_router, "GraphMemoryService", FakeGraphMemoryService)
+    monkeypatch.setattr(agent_router, "AgentAuditService", lambda _db: FakeAuditService())
+
+    request = AgentActionRequest(
+        agent_name="hermes",
+        action="graph_recall",
+        payload={"industry": "能源", "domain": "数据中台"},
+    )
+
+    result = asyncio.run(agent_router.run_action(request, db=object()))
+
+    assert result.code == 0
+    assert captured["recall"]["industry"] == "能源"
+    assert captured["recall"]["domain"] == "数据中台"
+    assert captured["audit"]["target_type"] == "graph_recall"
+    assert captured["audit"]["status"] == "ok"
+
+
 def test_business_export_endpoint(monkeypatch) -> None:
     expected = {
         "format": "solocrm-agent-context-v1",
