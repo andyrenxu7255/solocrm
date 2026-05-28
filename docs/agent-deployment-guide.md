@@ -129,6 +129,7 @@ solocrm graph fact --payload-json '{"industry":"能源","customer":"北京电力
 solocrm graph recall --industry 能源 --domain 数据中台 --json
 solocrm graph recall --product SoloBI --json
 solocrm graph recall --city 上海 --json
+solocrm graph recall --customer 北京电力 --max-hops 2 --json
 solocrm graph rebuild --json
 solocrm graph nodes --node-type industry --json
 solocrm graph edges --relation-type serves_domain --json
@@ -137,9 +138,18 @@ solocrm graph edges --relation-type serves_domain --json
 Agent rule:
 
 1. Use `solocrm graph recall` when preparing for a new customer.
-2. Prefer recalled items that share explicit industry/domain/customer/project nodes.
-3. Read `paths` and `evidence` before using an old case or material.
-4. Use semantic search only after graph recall has defined a candidate set.
+2. Keep the default `--max-hops 1` for direct fact recall.
+3. Use `--max-hops 2` only when the user asks for similar cases, reusable experience, or cross-customer analogy.
+4. Prefer recalled items that share explicit industry/domain/customer/project/product/city nodes.
+5. Read `paths`, `evidence`, and `gate.policy` before using an old case or material.
+6. Use semantic search only after graph recall has defined a candidate set.
+
+Traversal guardrails:
+
+- The backend hard-limits recall to 2 hops.
+- Only `in_industry`, `serves_domain`, `uses_product`, and `located_in` can bridge from one business record to another.
+- Broad bridge nodes with more than 50 touching edges are not expanded.
+- Hop-2 matches are score-decayed, so direct fact matches remain stronger.
 
 ## Audit Trail
 

@@ -51,11 +51,12 @@ Use graph recall when the user asks for old cases, reusable material, similar cu
 ```bash
 solocrm graph fact --payload-json '{"industry":"能源","customer":"北京电力","domain":"数据中台","project":"数据治理项目"}'
 solocrm graph recall --industry 能源 --domain 数据中台 --json
+solocrm graph recall --customer 北京电力 --max-hops 2 --json
 solocrm graph nodes --node-type customer --json
 solocrm graph edges --relation-type in_industry --json
 ```
 
-Read `shared_nodes` and `paths` before using a recalled case.
+Default recall is 1 hop. Use `--max-hops 2` only for similar-case or reusable-experience questions. Read `shared_nodes`, `paths`, `evidence`, and `gate.policy` before using a recalled case.
 
 ## Raw Escape Hatch
 

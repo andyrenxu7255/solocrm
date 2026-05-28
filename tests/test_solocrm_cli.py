@@ -305,6 +305,8 @@ def test_graph_recall_builds_body(monkeypatch, capsys):
             "找同领域案例",
             "--limit",
             "5",
+            "--max-hops",
+            "2",
             "--no-artifacts",
         ]
     )
@@ -323,6 +325,7 @@ def test_graph_recall_builds_body(monkeypatch, capsys):
             "query": "找同领域案例",
             "include_artifacts": False,
             "limit": 5,
+            "max_hops": 2,
         },
         None,
     )

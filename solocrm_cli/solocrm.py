@@ -237,6 +237,7 @@ def build_parser() -> argparse.ArgumentParser:
     graph_recall.add_argument("--city")
     graph_recall.add_argument("--query")
     graph_recall.add_argument("--limit", type=int, default=10)
+    graph_recall.add_argument("--max-hops", type=int, choices=[1, 2], default=1)
     graph_recall.add_argument(
         "--no-artifacts",
         action="store_true",
@@ -508,6 +509,7 @@ def cmd_graph_recall(args: argparse.Namespace, client: ApiClient) -> dict[str, A
         "query": args.query,
         "include_artifacts": not args.no_artifacts,
         "limit": args.limit,
+        "max_hops": args.max_hops,
     }
     clean = {key: value for key, value in payload.items() if value is not None}
     return unwrap(client.request("POST", "/graph/recall", body=clean))

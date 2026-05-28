@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from copy import copy
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -63,11 +64,46 @@ class SourceRecord:
     payload: dict
 
 
+@dataclass(frozen=True)
+class GraphRecallPolicy:
+    default_max_hops: int = 1
+    max_allowed_hops: int = 2
+    bridge_decay: float = 0.55
+    max_edges_per_bridge_node: int = 50
+    allowed_recall_relations: frozenset[str] = frozenset(
+        {
+            "in_industry",
+            "serves_domain",
+            "uses_product",
+            "located_in",
+            "has_project",
+            "has_case",
+            "supports_artifact",
+            "references",
+        }
+    )
+    bridge_relations: frozenset[str] = frozenset(
+        {
+            "in_industry",
+            "serves_domain",
+            "uses_product",
+            "located_in",
+        }
+    )
+    result_node_types: frozenset[str] = frozenset(
+        {"customer", "project", "case", "engagement", "artifact"}
+    )
+
+
+DEFAULT_RECALL_POLICY = GraphRecallPolicy()
+
+
 class GraphMemoryService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.nodes = GraphNodeRepository(session)
         self.edges = GraphEdgeRepository(session)
+        self.recall_policy = DEFAULT_RECALL_POLICY
 
     async def upsert_fact(self, fact: GraphFactInput) -> GraphFactResponse:
         if not any(
@@ -298,22 +334,37 @@ class GraphMemoryService:
         )
 
     async def recall(self, body: GraphRecallRequest) -> GraphRecallResponse:
+        policy = self._recall_policy()
+        max_hops = min(body.max_hops, policy.max_allowed_hops)
         query_nodes = await self._resolve_query_nodes(body)
         query_node_ids = [node.id for node in query_nodes]
         if not query_node_ids:
             return GraphRecallResponse(
                 query_nodes=[],
                 items=[],
-                gate={"mode": "graph", "reason": "no query nodes matched"},
+                gate={
+                    "mode": "graph",
+                    "reason": "no query nodes matched",
+                    "policy": _policy_metadata(policy, max_hops),
+                },
             )
 
         touching_edges = await self.edges.edges_touching_nodes(query_node_ids)
-        source_edges = await self._candidate_source_edges(touching_edges, query_node_ids)
+        source_edges = await self._candidate_source_edges(
+            touching_edges,
+            query_node_ids,
+            max_hops=max_hops,
+            policy=policy,
+        )
         if not source_edges:
             return GraphRecallResponse(
                 query_nodes=[GraphNodeResponse.model_validate(n) for n in query_nodes],
                 items=[],
-                gate={"mode": "graph", "reason": "no connected source facts"},
+                gate={
+                    "mode": "graph",
+                    "reason": "no connected source facts",
+                    "policy": _policy_metadata(policy, max_hops),
+                },
             )
         node_map = await self._node_map_for_edges(source_edges)
         source_records = await self._load_source_records(
@@ -328,6 +379,7 @@ class GraphMemoryService:
             source_edges=source_edges,
             node_map=node_map,
             body=body,
+            policy=policy,
         )
         scored.sort(key=lambda item: item.score, reverse=True)
         return GraphRecallResponse(
@@ -338,6 +390,7 @@ class GraphMemoryService:
                 "query_node_count": len(query_nodes),
                 "candidate_source_count": len(source_records),
                 "returned": min(len(scored), body.limit),
+                "policy": _policy_metadata(policy, max_hops),
             },
         )
 
@@ -412,6 +465,9 @@ class GraphMemoryService:
                 nodes.append(existing)
         return _unique_nodes(nodes)
 
+    def _recall_policy(self) -> GraphRecallPolicy:
+        return getattr(self, "recall_policy", DEFAULT_RECALL_POLICY)
+
     async def _node_map_for_edges(self, edges: list[GraphEdge]) -> dict[UUID, GraphNode]:
         node_ids = {edge.from_node_id for edge in edges} | {edge.to_node_id for edge in edges}
         if not node_ids:
@@ -425,19 +481,36 @@ class GraphMemoryService:
         self,
         touching_edges: list[GraphEdge],
         query_node_ids: list[UUID],
+        max_hops: int | None = None,
+        policy: GraphRecallPolicy | None = None,
     ) -> list[GraphEdge]:
+        active_policy = policy or self._recall_policy()
+        active_max_hops = max_hops or active_policy.default_max_hops
         query_set = set(query_node_ids)
         candidate_sources: set[tuple[str, UUID]] = set()
         candidate_node_ids: set[UUID] = set()
+        bridge_node_ids: set[UUID] = set()
+        visited_nodes = set(query_node_ids)
         for edge in touching_edges:
-            if edge.from_node_id in query_set or edge.to_node_id in query_set:
-                if edge.source_id is None:
-                    if edge.from_node_id not in query_set:
+            if edge.relation_type not in active_policy.allowed_recall_relations:
+                continue
+            if edge.from_node_id not in query_set and edge.to_node_id not in query_set:
+                continue
+            if edge.source_id is None:
+                if edge.relation_type in active_policy.bridge_relations:
+                    if edge.to_node_id in query_set:
                         candidate_node_ids.add(edge.from_node_id)
-                    if edge.to_node_id not in query_set:
-                        candidate_node_ids.add(edge.to_node_id)
+                    elif edge.from_node_id in query_set:
+                        bridge_node_ids.add(edge.to_node_id)
                     continue
-                candidate_sources.add((edge.source_type, edge.source_id))
+                other_node_id = (
+                    edge.from_node_id
+                    if edge.from_node_id not in query_set
+                    else edge.to_node_id
+                )
+                candidate_node_ids.add(other_node_id)
+                continue
+            candidate_sources.add((edge.source_type, edge.source_id))
         candidates: list[GraphEdge] = []
         source_types = {source_type for source_type, _source_id in candidate_sources}
         source_ids = {source_id for _source_type, source_id in candidate_sources}
@@ -451,7 +524,39 @@ class GraphMemoryService:
             candidates.extend(result.scalars().all())
         if candidate_node_ids:
             candidates.extend(await self.edges.edges_for_sources(list(candidate_node_ids)))
+        if active_max_hops >= 2 and bridge_node_ids:
+            candidates.extend(
+                await self._bridge_candidate_edges(
+                    bridge_node_ids=bridge_node_ids,
+                    visited_nodes=visited_nodes,
+                    policy=active_policy,
+                )
+            )
         return _unique_edges(candidates)
+
+    async def _bridge_candidate_edges(
+        self,
+        *,
+        bridge_node_ids: set[UUID],
+        visited_nodes: set[UUID],
+        policy: GraphRecallPolicy,
+    ) -> list[GraphEdge]:
+        candidates: list[GraphEdge] = []
+        for bridge_node_id in bridge_node_ids:
+            if bridge_node_id in visited_nodes:
+                continue
+            visited_nodes.add(bridge_node_id)
+            bridge_edges = list(await self.edges.edges_touching_nodes([bridge_node_id]))
+            if len(bridge_edges) > policy.max_edges_per_bridge_node:
+                continue
+            allowed_edges = [
+                edge
+                for edge in bridge_edges
+                if edge.relation_type in policy.bridge_relations
+                and _other_node_id(edge, bridge_node_id) not in visited_nodes
+            ]
+            candidates.extend(_mark_recall_hop(edge, 2) for edge in allowed_edges)
+        return candidates
 
     async def _load_source_records(
         self,
@@ -517,20 +622,23 @@ class GraphMemoryService:
         source_edges: list[GraphEdge],
         node_map: dict[UUID, GraphNode],
         body: GraphRecallRequest,
+        policy: GraphRecallPolicy,
     ) -> list[GraphRecallItem]:
         edges_by_source: dict[tuple[str, UUID], list[GraphEdge]] = defaultdict(list)
         query_ids = {node.id for node in query_nodes}
         for edge in source_edges:
+            if edge.relation_type not in policy.allowed_recall_relations:
+                continue
             if edge.source_id:
                 edges_by_source[(edge.source_type, edge.source_id)].append(edge)
                 continue
             if edge.from_node_id not in query_ids:
                 node = node_map.get(edge.from_node_id)
-                if node:
+                if node and node.node_type in policy.result_node_types:
                     edges_by_source[(node.node_type, edge.from_node_id)].append(edge)
             elif edge.to_node_id not in query_ids:
                 node = node_map.get(edge.to_node_id)
-                if node:
+                if node and node.node_type in policy.result_node_types:
                     edges_by_source[(node.node_type, edge.to_node_id)].append(edge)
 
         scored: list[GraphRecallItem] = []
@@ -549,6 +657,11 @@ class GraphMemoryService:
                 elif edge.from_node_id in query_ids:
                     shared_ids.add(edge.from_node_id)
                     paths.append(_path_step(from_node, edge, to_node))
+                elif _recall_hop(edge) == 2:
+                    bridge_node = _bridge_node_for_edge(from_node, edge, to_node, policy)
+                    if bridge_node is not None:
+                        shared_ids.add(bridge_node.id)
+                        paths.append(_path_step(from_node, edge, to_node))
 
             if not shared_ids:
                 continue
@@ -631,6 +744,20 @@ def _unique_edges(edges: list[GraphEdge]) -> list[GraphEdge]:
     return result
 
 
+def _mark_recall_hop(edge: GraphEdge, hop: int) -> GraphEdge:
+    marked = copy(edge)
+    properties = dict(getattr(marked, "properties_json", None) or {})
+    properties["recall_hop"] = hop
+    marked.properties_json = properties
+    return marked
+
+
+def _other_node_id(edge: GraphEdge, node_id: UUID) -> UUID:
+    if edge.from_node_id == node_id:
+        return edge.to_node_id
+    return edge.from_node_id
+
+
 def _source_ids(edges: list[GraphEdge], source_type: str) -> set[UUID]:
     return {
         edge.source_id
@@ -687,7 +814,44 @@ def _path_step(from_node: GraphNode, edge: GraphEdge, to_node: GraphNode) -> Gra
 
 
 def _edge_score(edge: GraphEdge) -> float:
-    return float(edge.weight) * float(edge.confidence)
+    hop = _recall_hop(edge)
+    decay = DEFAULT_RECALL_POLICY.bridge_decay ** (hop - 1)
+    return float(edge.weight) * float(edge.confidence) * decay
+
+
+def _recall_hop(edge: GraphEdge) -> int:
+    if isinstance(edge.properties_json, dict):
+        value = edge.properties_json.get("recall_hop")
+        if isinstance(value, int):
+            return max(value, 1)
+    return 1
+
+
+def _bridge_node_for_edge(
+    from_node: GraphNode,
+    edge: GraphEdge,
+    to_node: GraphNode,
+    policy: GraphRecallPolicy,
+) -> GraphNode | None:
+    if edge.relation_type not in policy.bridge_relations:
+        return None
+    if from_node.node_type not in policy.result_node_types:
+        return from_node
+    if to_node.node_type not in policy.result_node_types:
+        return to_node
+    return None
+
+
+def _policy_metadata(policy: GraphRecallPolicy, max_hops: int) -> dict:
+    return {
+        "max_hops": max_hops,
+        "max_allowed_hops": policy.max_allowed_hops,
+        "bridge_decay": policy.bridge_decay,
+        "max_edges_per_bridge_node": policy.max_edges_per_bridge_node,
+        "allowed_recall_relations": sorted(policy.allowed_recall_relations),
+        "bridge_relations": sorted(policy.bridge_relations),
+        "result_node_types": sorted(policy.result_node_types),
+    }
 
 
 def _lexical_bonus(query: str, payload: dict) -> float:

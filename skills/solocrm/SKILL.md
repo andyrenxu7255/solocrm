@@ -53,6 +53,8 @@ solocrm export --out ./solocrm-export.json
 - Treat `business_artifacts` as the portable home for contracts, knowledge, proposals, and delivery notes.
 - Treat `graph_nodes` and `graph_edges` as the fact memory for industry, customer, domain, project, case, and artifact recall.
 - Use graph recall as the gate before broad semantic recall.
+- Keep graph recall at the default 1 hop unless the user explicitly asks for similar cases or reusable experience.
+- Use `--max-hops 2` only for similar-case recall, and only trust results that explain a shared industry, domain, product, or city.
 - Use direct database access only for backup, restore, or explicit maintenance.
 - After a failed write, run `solocrm audit errors --json` before retrying.
 - Stop after a second failed write and report the latest audit id to the user.
@@ -66,6 +68,7 @@ solocrm export --out ./solocrm-export.json
 - `solocrm artifact list`
 - `solocrm artifact get <id>`
 - `solocrm graph recall --industry <industry> --domain <domain> --json`
+- `solocrm graph recall --customer <customer> --max-hops 2 --json`
 - `solocrm graph nodes --node-type domain --json`
 - `solocrm graph edges --relation-type serves_domain --json`
 - `solocrm audit summary --json`

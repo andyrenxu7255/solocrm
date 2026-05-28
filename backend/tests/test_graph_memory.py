@@ -46,6 +46,7 @@ def make_edge(
     source_type: str = "case",
     source_id: UUID | None = None,
     confidence: float = 0.9,
+    evidence: str = "同行业同领域案例",
 ):
     return SimpleNamespace(
         id=uuid4(),
@@ -56,7 +57,7 @@ def make_edge(
         confidence=confidence,
         source_type=source_type,
         source_id=source_id or uuid4(),
-        evidence="同行业同领域案例",
+        evidence=evidence,
         properties_json=None,
         created_at=NOW,
         updated_at=NOW,
@@ -80,7 +81,7 @@ def test_graph_recall_scores_shared_industry_and_domain(monkeypatch) -> None:
         async def _resolve_query_nodes(self, _body):
             return [industry, domain]
 
-        async def _candidate_source_edges(self, _touching_edges, _query_node_ids):
+        async def _candidate_source_edges(self, _touching_edges, _query_node_ids, **_kwargs):
             return edges
 
         async def _node_map_for_edges(self, _edges):
@@ -113,11 +114,193 @@ def test_graph_recall_scores_shared_industry_and_domain(monkeypatch) -> None:
     )
 
     assert result.gate["mode"] == "graph_first"
+    assert result.gate["policy"]["max_hops"] == 1
     assert result.items[0].target_type == "case"
     assert result.items[0].target_id == case_id
     assert result.items[0].score == 1.8
     assert {node.name for node in result.items[0].shared_nodes} == {"能源", "数据中台"}
     assert len(result.items[0].paths) == 2
+
+
+def test_graph_recall_two_hops_uses_whitelisted_fact_bridges() -> None:
+    current_customer = make_node("customer", "北京电力")
+    industry = make_node("industry", "能源")
+    old_case_id = uuid4()
+    old_case = make_node("case", "华东燃气巡检案例", "case", old_case_id)
+    current_edge = make_edge(
+        current_customer,
+        "in_industry",
+        industry,
+        source_type="agent",
+        evidence="当前客户属于能源行业",
+    )
+    current_edge.source_id = None
+    old_case_edge = make_edge(
+        old_case,
+        "in_industry",
+        industry,
+        source_type="case",
+        source_id=old_case_id,
+        evidence="老案例属于能源行业",
+    )
+    blocked_edge = make_edge(
+        old_case,
+        "similar_to",
+        current_customer,
+        source_type="case",
+        source_id=old_case_id,
+        evidence="非白名单桥接关系",
+    )
+
+    class FakeEdgeRepository:
+        async def edges_touching_nodes(self, node_ids):
+            if node_ids == [current_customer.id]:
+                return [current_edge, blocked_edge]
+            if node_ids == [industry.id]:
+                return [current_edge, old_case_edge]
+            return []
+
+        async def edges_for_sources(self, source_ids):
+            if source_ids == [industry.id]:
+                return [current_edge, old_case_edge]
+            if source_ids == [old_case.id]:
+                return [old_case_edge, blocked_edge]
+            return []
+
+    class FakeGraphMemoryService(graph_service.GraphMemoryService):
+        def __init__(self):
+            self.edges = FakeEdgeRepository()
+            self.recall_policy = graph_service.DEFAULT_RECALL_POLICY
+
+        async def _resolve_query_nodes(self, _body):
+            return [current_customer]
+
+        async def _node_map_for_edges(self, edges):
+            nodes = [current_customer, industry, old_case]
+            return {node.id: node for node in nodes}
+
+        async def _load_source_records(
+            self,
+            _source_edges,
+            _body,
+            query_node_ids=None,
+            node_map=None,
+        ):
+            return [
+                graph_service.SourceRecord(
+                    source_type="case",
+                    source_id=old_case_id,
+                    title="华东燃气巡检案例",
+                    payload={"title": "华东燃气巡检案例"},
+                )
+            ]
+
+    svc = FakeGraphMemoryService()
+
+    direct = asyncio.run(svc.recall(GraphRecallRequest(customer="北京电力")))
+    expanded = asyncio.run(
+        svc.recall(GraphRecallRequest(customer="北京电力", max_hops=2))
+    )
+
+    assert direct.items == []
+    assert direct.gate["policy"]["max_hops"] == 1
+    assert expanded.gate["policy"]["max_hops"] == 2
+    assert expanded.items[0].title == "华东燃气巡检案例"
+    assert expanded.items[0].score == 0.495
+    assert {node.name for node in expanded.items[0].shared_nodes} == {"能源"}
+    assert {path.relation_type for path in expanded.items[0].paths} == {"in_industry"}
+
+
+def test_graph_recall_two_hops_only_explains_original_bridge_fact() -> None:
+    current_customer = make_node("customer", "北京电力")
+    industry = make_node("industry", "能源")
+    domain = make_node("domain", "数据中台")
+    old_case_id = uuid4()
+    old_case = make_node("case", "华东燃气数据中台", "case", old_case_id)
+    current_edge = make_edge(current_customer, "in_industry", industry, source_type="agent")
+    current_edge.source_id = None
+    old_industry_edge = make_edge(
+        old_case,
+        "in_industry",
+        industry,
+        source_type="case",
+        source_id=old_case_id,
+    )
+    old_domain_edge = make_edge(
+        old_case,
+        "serves_domain",
+        domain,
+        source_type="case",
+        source_id=old_case_id,
+    )
+
+    class FakeEdgeRepository:
+        async def edges_touching_nodes(self, node_ids):
+            if node_ids == [current_customer.id]:
+                return [current_edge]
+            if node_ids == [industry.id]:
+                return [current_edge, old_industry_edge]
+            return []
+
+        async def edges_for_sources(self, source_ids):
+            if source_ids == [industry.id]:
+                return [current_edge, old_industry_edge, old_domain_edge]
+            return []
+
+    result = asyncio.run(
+        _candidate_edges_with_fake_repo(
+            FakeEdgeRepository(),
+            [current_edge],
+            [current_customer.id],
+            max_hops=2,
+        )
+    )
+
+    assert {edge.id for edge in result} == {old_industry_edge.id}
+
+
+def test_graph_recall_skips_high_degree_bridge_nodes() -> None:
+    current_customer = make_node("customer", "北京电力")
+    industry = make_node("industry", "能源")
+    current_edge = make_edge(
+        current_customer,
+        "in_industry",
+        industry,
+        source_type="agent",
+    )
+    current_edge.source_id = None
+    noisy_edges = [
+        make_edge(make_node("case", f"案例{i}"), "in_industry", industry)
+        for i in range(graph_service.DEFAULT_RECALL_POLICY.max_edges_per_bridge_node + 1)
+    ]
+
+    class FakeEdgeRepository:
+        async def edges_touching_nodes(self, node_ids):
+            if node_ids == [current_customer.id]:
+                return [current_edge]
+            if node_ids == [industry.id]:
+                return [current_edge, *noisy_edges]
+            return []
+
+        async def edges_for_sources(self, source_ids):
+            if source_ids == [industry.id]:
+                return [current_edge, *noisy_edges]
+            return []
+
+    svc = graph_service.GraphMemoryService.__new__(graph_service.GraphMemoryService)
+    svc.edges = FakeEdgeRepository()
+    svc.recall_policy = graph_service.DEFAULT_RECALL_POLICY
+
+    result = asyncio.run(
+        _candidate_edges_with_fake_repo(
+            FakeEdgeRepository(),
+            [current_edge],
+            [current_customer.id],
+            max_hops=2,
+        )
+    )
+
+    assert result == []
 
 
 def test_graph_recall_returns_empty_when_no_query_nodes() -> None:
@@ -233,6 +416,33 @@ def test_candidate_edges_can_recall_customer_node_facts() -> None:
     assert {edge.id for edge in result} == {edge.id for edge in edges}
 
 
+def test_candidate_edges_do_not_expand_record_nodes_without_two_hops() -> None:
+    customer = make_node("customer", "北京电力")
+    industry = make_node("industry", "能源")
+    edge = make_edge(customer, "in_industry", industry, source_type="agent")
+    edge.source_id = None
+
+    class FakeEdgeRepository:
+        async def edges_for_sources(self, _source_ids):
+            raise AssertionError("default one-hop recall should not expand bridge nodes")
+
+    svc = graph_service.GraphMemoryService.__new__(graph_service.GraphMemoryService)
+    svc.edges = FakeEdgeRepository()
+    svc.session = None
+    svc.recall_policy = graph_service.DEFAULT_RECALL_POLICY
+
+    result = asyncio.run(
+        svc._candidate_source_edges(
+            touching_edges=[edge],
+            query_node_ids=[customer.id],
+            max_hops=1,
+            policy=graph_service.DEFAULT_RECALL_POLICY,
+        )
+    )
+
+    assert result == []
+
+
 def test_list_nodes_endpoint() -> None:
     industry = make_node("industry", "能源")
 
@@ -259,3 +469,22 @@ def test_list_nodes_endpoint() -> None:
 
 async def _async(value):
     return value
+
+
+async def _candidate_edges_with_fake_repo(
+    fake_edges,
+    touching_edges,
+    query_node_ids,
+    *,
+    max_hops,
+):
+    svc = graph_service.GraphMemoryService.__new__(graph_service.GraphMemoryService)
+    svc.edges = fake_edges
+    svc.session = None
+    svc.recall_policy = graph_service.DEFAULT_RECALL_POLICY
+    return await svc._candidate_source_edges(
+        touching_edges=touching_edges,
+        query_node_ids=query_node_ids,
+        max_hops=max_hops,
+        policy=graph_service.DEFAULT_RECALL_POLICY,
+    )

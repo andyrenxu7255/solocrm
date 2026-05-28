@@ -31,7 +31,9 @@ Use this checklist before publishing a SoloCRM build or handing it to an OpenCla
 
 - `solocrm graph fact --payload-json ...` can create explicit graph facts.
 - `solocrm graph recall --industry <x> --domain <y> --json` returns cases or artifacts with shared nodes.
+- `solocrm graph recall --customer <x> --max-hops 2 --json` returns similar cases only through whitelisted bridge relations.
 - Recalled items include `paths` and `evidence`.
+- `gate.policy.max_hops` is never greater than 2.
 - `solocrm graph rebuild --json` can rebuild graph memory after imports.
 - Apache AGE remains optional; PostgreSQL graph tables are the default runtime path.
 

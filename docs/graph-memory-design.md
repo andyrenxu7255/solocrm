@@ -115,7 +115,8 @@ Request:
   "city": "上海",
   "query": "找可复用案例和材料",
   "include_artifacts": true,
-  "limit": 10
+  "limit": 10,
+  "max_hops": 1
 }
 ```
 
@@ -127,12 +128,63 @@ Response includes:
 - `paths`: explainable source-to-fact paths with evidence and confidence
 - `gate`: graph gate metadata
 
+## Traversal Policy
+
+SoloCRM treats graph recall as controlled business retrieval, not open-ended graph walking.
+
+Defaults:
+
+- `max_hops=1` is the default and should be used for normal sales, presales, and delivery preparation.
+- `max_hops=2` is the maximum supported depth and should only be used when the user asks for similar cases, reusable experience, or cross-customer analogy.
+- Requests cannot exceed 2 hops.
+- Returned `gate.policy` shows the active hop limit, relation whitelist, bridge whitelist, result node types, bridge decay, and high-degree cutoff.
+
+Allowed recall relations:
+
+- `in_industry`
+- `serves_domain`
+- `uses_product`
+- `located_in`
+- `has_project`
+- `has_case`
+- `supports_artifact`
+- `references`
+
+Allowed bridge relations for 2-hop similar-case recall:
+
+- `in_industry`
+- `serves_domain`
+- `uses_product`
+- `located_in`
+
+The bridge whitelist is intentionally narrower than the recall whitelist. A customer can lead to similar cases through shared industry, domain, product, or city. It should not continue through audit logs, free-form tags, generic similarity edges, or arbitrary references.
+
+Stopping rules:
+
+1. A recall request must resolve at least one query node.
+2. The traversal keeps a visited set and never expands the same bridge node twice in one recall.
+3. Bridge nodes with more than 50 touching edges are treated as too broad and are not expanded.
+4. Hop-2 edges receive a 0.55 score decay.
+5. The API still applies `limit` after scoring and returns at most 50 items.
+6. Agents must read `shared_nodes`, `paths`, `evidence`, and `gate.policy` before using a recalled item.
+
+Examples:
+
+```bash
+# Default: direct fact gate.
+solocrm graph recall --industry 能源 --domain 数据中台 --json
+
+# Similar-case mode: current customer -> shared fact -> old cases/materials.
+solocrm graph recall --customer 北京电力 --max-hops 2 --json
+```
+
 ## Operational Rule
 
 Agents should prefer this order for serious recall:
 
 1. `solocrm graph rebuild --json` after bulk imports or migrations.
 2. `solocrm graph recall ... --json` for sales or presales preparation.
-3. Use vector or text search only after graph recall has defined a candidate set.
+3. Use `--max-hops 2` only when the user asks for similar cases or reusable experience.
+4. Use vector or text search only after graph recall has defined a candidate set.
 
 This prevents an impressive but wrong semantic match from outranking an explicitly related old case.

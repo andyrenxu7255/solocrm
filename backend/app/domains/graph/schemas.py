@@ -114,6 +114,7 @@ class GraphRecallRequest(BaseModel):
     query: str | None = Field(default=None, max_length=1000)
     include_artifacts: bool = True
     limit: int = Field(default=10, ge=1, le=50)
+    max_hops: int = Field(default=1, ge=1, le=2)
 
 
 class GraphPathStep(BaseModel):

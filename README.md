@@ -85,6 +85,7 @@ solocrm doctor --json
 solocrm capabilities
 solocrm engagement list
 solocrm graph recall --industry 能源 --domain 数据中台 --json
+solocrm graph recall --customer 北京电力 --max-hops 2 --json
 solocrm audit summary --json
 solocrm audit errors --json
 solocrm db info
@@ -99,8 +100,9 @@ solocrm export --out ./solocrm-export.json
 2. 让 agent 维护客户、行动项、风险和推进阶段。
 3. 把行业、客户、领域、项目、案例和材料沉淀成图关系。
 4. 面向新客户准备时，先用图召回共同点和老材料。
-5. 如果写入失败，agent 先查看审计错误再修正重试。
-6. 需要迁移时，直接导出整套业务上下文。
+5. 常规召回默认 1 跳；相似案例分析才使用 `--max-hops 2`，且只能通过行业、领域、产品、城市这些白名单事实桥接。
+6. 如果写入失败，agent 先查看审计错误再修正重试。
+7. 需要迁移时，直接导出整套业务上下文。
 
 ## 🏗️ 技术架构
 
