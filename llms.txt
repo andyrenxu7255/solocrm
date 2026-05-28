@@ -13,6 +13,7 @@
 - [Agent Deployment Guide](docs/agent-deployment-guide.md): OpenClaw/Hermes setup, CLI exposure, database policy, and audit workflow.
 - [API Examples](docs/agent-api-examples.md): HTTP examples for capabilities, actions, audit, and export.
 - [Graph Memory Design](docs/graph-memory-design.md): Fact graph story line, schema, recall contract, and AGE option.
+- [User Storylines](docs/user-storylines.md): Scenario-driven acceptance paths for sales, presales, delivery, graph recall, audit, and export.
 - [SoloCRM Skill](skills/solocrm/SKILL.md): Skill instructions for agents operating the CRM.
 - [Skill Usage Reference](skills/solocrm/references/usage.md): Command examples and safety rules.
 

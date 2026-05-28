@@ -6,6 +6,7 @@ Use this checklist before publishing a SoloCRM build or handing it to an OpenCla
 
 - `solocrm doctor --json` succeeds against the target backend.
 - `solocrm capabilities` returns the supported action list.
+- `docs/user-storylines.md` covers at least 10 distinct user paths, and the automated storyline tests pass.
 - `solocrm summary` returns sales, presales, delivery, risk, and next-action context.
 - Writes use `solocrm engagement ...`, `solocrm artifact ...`, or `POST /agent/actions`.
 - Direct database writes are reserved for backup, restore, diagnostics, or explicit maintenance.

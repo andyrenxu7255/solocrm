@@ -119,6 +119,10 @@ solocrm export --out ./solocrm-export.json
 
 见 [ROADMAP.md](./ROADMAP.md)
 
+## 🧭 用户故事线
+
+见 [docs/user-storylines.md](./docs/user-storylines.md)。该文档覆盖 15 条 agent 操作路径，包括销售线索、售前材料、产品召回、区域复用、合同模板、交付交接、审计恢复、迁移备份和无 AGE 部署。
+
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！

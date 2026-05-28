@@ -89,6 +89,7 @@ solocrm/
 ├── OPENCLAW_INSTALL.md          # OpenClaw 部署指南
 ├── docs/agent-deployment-guide.md # agent 部署与 CLI 接入
 ├── docs/agent-api-examples.md    # API 样例
+├── docs/user-storylines.md       # 15 条场景驱动验收故事线
 ├── AGENTS.md                    # agent 入口规则
 ├── .env.example                 # 环境变量模板
 ├── docker-compose.yml           # Docker 编排

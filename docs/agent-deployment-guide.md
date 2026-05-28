@@ -127,6 +127,8 @@ Core commands:
 ```bash
 solocrm graph fact --payload-json '{"industry":"能源","customer":"北京电力","domain":"数据中台","project":"数据治理项目"}'
 solocrm graph recall --industry 能源 --domain 数据中台 --json
+solocrm graph recall --product SoloBI --json
+solocrm graph recall --city 上海 --json
 solocrm graph rebuild --json
 solocrm graph nodes --node-type industry --json
 solocrm graph edges --relation-type serves_domain --json

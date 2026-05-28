@@ -109,6 +109,8 @@ class GraphRecallRequest(BaseModel):
     customer: str | None = Field(default=None, max_length=200)
     domain: str | None = Field(default=None, max_length=200)
     project: str | None = Field(default=None, max_length=240)
+    product: str | None = Field(default=None, max_length=200)
+    city: str | None = Field(default=None, max_length=100)
     query: str | None = Field(default=None, max_length=1000)
     include_artifacts: bool = True
     limit: int = Field(default=10, ge=1, le=50)

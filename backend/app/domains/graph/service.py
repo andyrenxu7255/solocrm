@@ -121,10 +121,12 @@ class GraphMemoryService:
             (customer_node, "in_industry", industry_node),
             (customer_node, "serves_domain", domain_node),
             (customer_node, "has_project", project_node),
+            (customer_node, "uses_product", product_node),
             (customer_node, "located_in", city_node),
             (project_node, "in_industry", industry_node),
             (project_node, "serves_domain", domain_node),
             (project_node, "uses_product", product_node),
+            (project_node, "located_in", city_node),
         ]
 
         case_node = None
@@ -139,6 +141,7 @@ class GraphMemoryService:
                     (case_node, "in_industry", industry_node),
                     (case_node, "serves_domain", domain_node),
                     (case_node, "uses_product", product_node),
+                    (case_node, "located_in", city_node),
                     (case_node, "references", project_node),
                 ]
             )
@@ -158,6 +161,7 @@ class GraphMemoryService:
                     (engagement_node, "in_industry", industry_node),
                     (engagement_node, "serves_domain", domain_node),
                     (engagement_node, "uses_product", product_node),
+                    (engagement_node, "located_in", city_node),
                 ]
             )
 
@@ -174,6 +178,8 @@ class GraphMemoryService:
                     (case_node, "supports_artifact", artifact_node),
                     (artifact_node, "in_industry", industry_node),
                     (artifact_node, "serves_domain", domain_node),
+                    (artifact_node, "uses_product", product_node),
+                    (artifact_node, "located_in", city_node),
                 ]
             )
 
@@ -241,6 +247,16 @@ class GraphMemoryService:
                         _json_value(engagement.delivery_json, "domain"),
                     ),
                     project=engagement.name,
+                    product=_first_value(
+                        _json_value(engagement.sales_json, "product"),
+                        _json_value(engagement.presales_json, "product"),
+                        _json_value(engagement.delivery_json, "product"),
+                    ),
+                    city=_first_value(
+                        _json_value(engagement.sales_json, "city"),
+                        _json_value(engagement.presales_json, "city"),
+                        _json_value(engagement.delivery_json, "city"),
+                    ),
                     engagement_id=engagement.id,
                     source_type="engagement",
                     evidence=_first_value(
@@ -264,6 +280,8 @@ class GraphMemoryService:
                         artifact.artifact_type,
                     ),
                     project=_json_value(artifact.metadata_json, "project"),
+                    product=_json_value(artifact.metadata_json, "product"),
+                    city=_json_value(artifact.metadata_json, "city"),
                     artifact_id=artifact.id,
                     source_type="artifact",
                     evidence=artifact.summary or artifact.content[:500],
@@ -382,6 +400,8 @@ class GraphMemoryService:
             ("customer", body.customer),
             ("domain", body.domain),
             ("project", body.project),
+            ("product", body.product),
+            ("city", body.city),
         ]
         nodes: list[GraphNode] = []
         for node_type, value in specs:

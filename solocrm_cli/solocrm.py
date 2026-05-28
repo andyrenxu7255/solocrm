@@ -233,6 +233,8 @@ def build_parser() -> argparse.ArgumentParser:
     graph_recall.add_argument("--customer")
     graph_recall.add_argument("--domain")
     graph_recall.add_argument("--project")
+    graph_recall.add_argument("--product")
+    graph_recall.add_argument("--city")
     graph_recall.add_argument("--query")
     graph_recall.add_argument("--limit", type=int, default=10)
     graph_recall.add_argument(
@@ -501,6 +503,8 @@ def cmd_graph_recall(args: argparse.Namespace, client: ApiClient) -> dict[str, A
         "customer": args.customer,
         "domain": args.domain,
         "project": args.project,
+        "product": args.product,
+        "city": args.city,
         "query": args.query,
         "include_artifacts": not args.no_artifacts,
         "limit": args.limit,

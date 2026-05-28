@@ -20,7 +20,9 @@ A new Customer D may match by industry, by domain, by project pattern, or by reu
 6. The response includes the old material plus explainable paths such as:
    - `case -> in_industry -> 能源`
    - `case -> serves_domain -> 数据中台`
+   - `case -> uses_product -> SoloBI`
    - `artifact -> serves_domain -> 数据中台`
+   - `artifact -> located_in -> 上海`
 7. The agent can safely tell the user why the old case or material was recalled.
 
 ## Database Strategy
@@ -109,6 +111,8 @@ Request:
 {
   "industry": "能源",
   "domain": "数据中台",
+  "product": "SoloBI",
+  "city": "上海",
   "query": "找可复用案例和材料",
   "include_artifacts": true,
   "limit": 10
